@@ -44,6 +44,10 @@ if (isset($_POST['registrar'])) {
     <div class="container mx-auto py-12">
         <h1 class="text-3xl font-bold text-center mb-6">Registro de Nuevos Libros</h1>
 
+        <div class="flex justify-start mb-6">
+            <a href="catalogo_libros.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Volver</a>
+        </div>
+
         <form action="registro_libros.php" method="POST" class="bg-white p-8 rounded-lg shadow-md max-w-lg mx-auto">
             <div class="mb-4">
                 <label for="n_inventario" class="block text-sm font-medium text-gray-700">Nº de Inventario</label>

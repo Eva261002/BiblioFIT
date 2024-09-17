@@ -74,14 +74,13 @@ $result = $conn->query($sql);
                         </td>
 
                         <td class="py-3 px-6 text-center">
-                            <?php if($row['estado'] == 'disponible'): ?>
-                                <a href="javascript:void(0);" onclick="confirmarPrestamo(<?php echo $row['id_libro']; ?>)" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 mr-2">Prestar</a>
-                                <button onclick="confirmarDevolucion(<?php echo $row['id_libro']; ?>)" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600" style="display: none;">Devolver</button>
-                            <?php elseif($row['estado'] == 'prestado'): ?>
-                                <button onclick="confirmarDevolucion(<?php echo $row['id_libro']; ?>)" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Devolver</button>
-                                <a href="javascript:void(0);" onclick="confirmarPrestamo(<?php echo $row['id_libro']; ?>)" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 mr-2" style="display: none;">Prestar</a>
-                            <?php endif; ?>
-                        </td>
+                        <!-- Botón de prestar con confirmación -->
+                        <button onclick="confirmarPrestamo(<?php echo $row['id_libro']; ?>)" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 mr-2">Prestar</button>
+                        <!-- Botón de devolver siempre visible -->
+                        <button onclick="confirmarDevolucion(<?php echo $row['id_libro']; ?>)" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Devolver</button>
+                    </td>
+
+
 
                     </tr>
                     <?php endwhile; ?>
@@ -98,30 +97,37 @@ $result = $conn->query($sql);
         }
     }
 
-    function confirmarDevolucion(id_libro) {
-        if (confirm('¿Estás seguro de que deseas devolver este libro?')) {
-            devolverLibro(id_libro);
-        }
-    }
 
-    function devolverLibro(id_libro) {
-        $.ajax({
-            url: 'devolver_libro.php',
-            type: 'POST',
-            data: { id_libro: id_libro },
-            success: function(response) {
-                if (response == 'success') {
-                    // Actualizar el estado del libro en la tabla
-                    $('#estado-' + id_libro).html('<span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>');
-                    // Mostrar el botón correcto
-                    $('#libro-' + id_libro).find('button').hide();
-                    $('#libro-' + id_libro).find('a').show();
-                } else {
-                    alert('Error al devolver el libro.');
-                }
-            }
-        });
+    function confirmarDevolucion(id_libro) {
+    if (confirm('¿Estás seguro de que deseas devolver este libro?')) {
+        devolverLibro(id_libro);
     }
+}
+
+function devolverLibro(id_libro) {
+    $.ajax({
+        url: 'devolver_libro.php',
+        type: 'POST',
+        data: { id_libro: id_libro },
+        success: function(response) {
+            if (response == 'success') {
+                // Actualizar el estado del libro en la tabla
+                $('#estado-' + id_libro).html('<span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>');
+                
+                // Actualizar los botones en la interfaz
+                var acciones = `
+                    <a href="prestamo_libros.php?id=${id_libro}" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 mr-2">Prestar</a>
+                    <button onclick="confirmarDevolucion(${id_libro})" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Devolver</button>
+                `;
+                $('#libro-' + id_libro + ' td:last-child').html(acciones);
+            } else {
+                alert('Error al devolver el libro.');
+            }
+        }
+    });
+}
+
+
     </script>
 </body>
 </html>

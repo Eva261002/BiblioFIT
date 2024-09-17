@@ -45,6 +45,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="container mx-auto p-8">
         <h2 class="text-3xl font-bold mb-6 text-center">Registrar Estudiante</h2>
 
+        <div class="flex justify-start mb-6">
+            <a href="listar_estudiantes.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Volver</a>
+        </div>
+
         <?php if (isset($_GET['success']) && $_GET['success'] == 'true'): ?>
             <div class="bg-green-100 text-green-700 p-4 rounded-lg mb-6">
                 Estudiante registrado exitosamente.
@@ -75,10 +79,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <label for="ru" class="block text-gray-700">RU:</label>
                     <input type="text" name="ru" id="ru" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-indigo-500" required>
                 </div>
+                
                 <div class="mb-4">
-                    <label for="carrera" class="block text-gray-700">Carrera:</label>
-                    <input type="text" name="carrera" id="carrera" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-indigo-500" required>
-                </div>
+                <label for="carrera" class="block text-sm font-medium text-gray-700">carrera</label>
+                <select name="carrera" id="carrera" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="">Selecciona una carrera</option>
+                    <option value="Ingeniría en Sistemas">Ingeniría en Sistemas</option>
+                    <option value="Ingeniería Civil">Ingeniería Civil</option>
+                    <option value="Ingeniería Mecánica y Automotriz">Ingeniería Mecánica y Automotriz</option>
+                </select>
+            </div>
+
                 <button type="submit" class="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">Registrar Estudiante</button>
             </form>
         </div>

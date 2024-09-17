@@ -1,6 +1,9 @@
 <?php
 include('includes/db.php');
 
+// Establecer la zona horaria correcta
+date_default_timezone_set('America/La_Paz'); // Cambia esto por la zona horaria que necesites
+
 if (isset($_GET['id'])) {
     $id_libro = $_GET['id'];
     // Consulta para obtener el nombre del libro basado en el id_libro
@@ -19,22 +22,28 @@ if (isset($_POST['accion'])) {
         $fecha_prestamo = date('Y-m-d H:i:s');  // Incluye la fecha y hora
         $conn->begin_transaction();
         try {
-            // Verificar si el libro ya está prestado
-            $sql_check = "SELECT * FROM prestamo WHERE id_libro = $id_libro AND fecha_devolucion IS NULL";
-            $result_check = $conn->query($sql_check);
-            if ($result_check->num_rows > 0) {
-                throw new Exception('El libro ya está prestado.');
+            // Verificar si hay ejemplares disponibles
+            $sql_check_ejemplares = "SELECT ejemplar FROM libros WHERE id_libro = $id_libro";
+            $result_ejemplares = $conn->query($sql_check_ejemplares);
+            $ejemplares = $result_ejemplares->fetch_assoc()['ejemplar'];
+
+            if ($ejemplares <= 0) {
+                throw new Exception('No hay ejemplares disponibles para prestar.');
             }
-     
+
             // Insertar en la tabla de préstamos
             $sql_prestamo = "INSERT INTO prestamo (id_libro, id_estudiante, fecha_prestamo, estado) 
                              VALUES ($id_libro, $id_estudiante, '$fecha_prestamo', 'no disponible')";
             $conn->query($sql_prestamo);
-    
+
+            // Disminuir el número de ejemplares disponibles
+            $sql_update_ejemplares = "UPDATE libros SET ejemplar = ejemplar - 1 WHERE id_libro = $id_libro";
+            $conn->query($sql_update_ejemplares);
+
             // Actualizar el estado del libro
             $sql_libro = "UPDATE libros SET estado = 'prestado' WHERE id_libro = $id_libro";
             $conn->query($sql_libro);
-    
+
             // Confirmar la transacción
             $conn->commit();
             header('Location: catalogo_libros.php');
