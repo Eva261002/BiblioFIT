@@ -8,12 +8,12 @@
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto p-8">
-        <h2 class="text-3xl font-bold mb-6 text-center">Registro de Entrada y Salida</h2>
 
-        <!-- Botón para volver al índice -->
-        <div class="flex justify-start mb-6">
+     <!-- Botón para volver al índice -->
+     <div class="flex justify-start mb-6">
             <a href="index.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Volver al Inicio</a>
         </div>
+        <h2 class="text-3xl font-bold mb-6 text-center">Registro de Entrada y Salida</h2>
 
         <!-- Buscar Estudiante -->
         <form id="buscar-form" class="mb-6">
