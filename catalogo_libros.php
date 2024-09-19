@@ -35,9 +35,10 @@ $result = $conn->query($sql);
             <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 ml-2">Buscar</button>
         </form>
 
-        <!-- Botones de acción -->
-        <div class="flex justify-end mb-6">
+           <!-- Botones de acción -->
+           <div class="flex justify-end mb-6">
             <a href="registro_libros.php" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 mr-4">Agregar Libro</a>
+            <a href="prestamo_libros.php" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600">Ver Libros Prestados</a>
         </div>
 
         <!-- Tabla de Catálogo -->
