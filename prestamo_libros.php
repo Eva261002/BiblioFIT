@@ -125,15 +125,7 @@ if (isset($_POST['accion'])) {
                     echo "<p><strong>Carrera:</strong> " . htmlspecialchars($row['carrera']) . "</p>";
 
                     if ($has_prestamo) {
-                        // Obtener detalles del préstamo activo
-                        $sql_prestamo_detalle = "SELECT prestamo.fecha_prestamo, libros.titulo FROM prestamo JOIN libros ON prestamo.id_libro = libros.id_libro WHERE prestamo.id_estudiante = $student_id AND prestamo.fecha_devolucion IS NULL";
-                        $result_prestamo_detalle = $conn->query($sql_prestamo_detalle);
-                        if ($result_prestamo_detalle->num_rows > 0) {
-                            $prestamo = $result_prestamo_detalle->fetch_assoc();
-                            echo "<p class='text-red-500'>Este estudiante ya tiene un libro prestado:</p>";
-                            echo "<p><strong>Título:</strong> " . htmlspecialchars($prestamo['titulo']) . "</p>";
-                            echo "<p><strong>Fecha de Préstamo:</strong> " . htmlspecialchars($prestamo['fecha_prestamo']) . "</p>";
-                        }
+                        echo "<p class='text-red-500'>Este estudiante ya tiene un libro prestado.</p>";
                     }
 
                     // Botón para prestar el libro
@@ -154,49 +146,6 @@ if (isset($_POST['accion'])) {
             }
         }
         ?>
-
-        <!-- Mostrar los libros actualmente prestados -->
-        <div class="mt-12">
-            <h2 class="text-2xl font-bold mb-4">Libros Prestados Actualmente</h2>
-            <?php
-            // Consulta para obtener todos los préstamos activos
-            $sql_prestamos_activos = "SELECT prestamo.id_prestamo, libros.titulo, estudiantes.nombre, estudiantes.apellido_paterno, estudiantes.apellido_materno, prestamo.fecha_prestamo 
-                                      FROM prestamo 
-                                      JOIN libros ON prestamo.id_libro = libros.id_libro 
-                                      JOIN estudiantes ON prestamo.id_estudiante = estudiantes.id_estudiante 
-                                      WHERE prestamo.fecha_devolucion IS NULL";
-            $result_prestamos = $conn->query($sql_prestamos_activos);
-
-            if ($result_prestamos->num_rows > 0) {
-                echo "<div class='overflow-x-auto bg-white rounded-lg shadow'>";
-                echo "<table class='min-w-full bg-white'>";
-                echo "<thead class='bg-gray-200 text-gray-600 uppercase text-sm leading-normal'>";
-                echo "<tr>";
-                echo "<th class='py-3 px-6 text-left'>ID Préstamo</th>";
-                echo "<th class='py-3 px-6 text-left'>Título del Libro</th>";
-                echo "<th class='py-3 px-6 text-left'>Estudiante</th>";
-                echo "<th class='py-3 px-6 text-left'>Fecha de Préstamo</th>";
-                echo "</tr>";
-                echo "</thead>";
-                echo "<tbody class='text-gray-600 text-sm font-light'>";
-
-                while ($prestamo = $result_prestamos->fetch_assoc()) {
-                    echo "<tr class='border-b border-gray-200 hover:bg-gray-100'>";
-                    echo "<td class='py-3 px-6 text-left'>" . intval($prestamo['id_prestamo']) . "</td>";
-                    echo "<td class='py-3 px-6 text-left'>" . htmlspecialchars($prestamo['titulo']) . "</td>";
-                    echo "<td class='py-3 px-6 text-left'>" . htmlspecialchars($prestamo['nombre'] . " " . $prestamo['apellido_paterno'] . " " . $prestamo['apellido_materno']) . "</td>";
-                    echo "<td class='py-3 px-6 text-left'>" . htmlspecialchars($prestamo['fecha_prestamo']) . "</td>";
-                    echo "</tr>";
-                }
-
-                echo "</tbody>";
-                echo "</table>";
-                echo "</div>";
-            } else {
-                echo "<p>No hay libros actualmente prestados.</p>";
-            }
-            ?>
-        </div>
     </div>
 </body>
 </html>
