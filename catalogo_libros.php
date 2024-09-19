@@ -65,13 +65,16 @@ $result = $conn->query($sql);
                         <td class="py-3 px-6 text-left"><?php echo $row['año_edicion']; ?></td>
                         <td class="py-3 px-6 text-left"><?php echo $row['pais']; ?></td>
                         <td class="py-3 px-6 text-left"><?php echo $row['categoria']; ?></td>
-                        <td class="py-3 px-6 text-left" id="estado-<?php echo $row['id_libro']; ?>">
-                            <?php if($row['estado'] == 'disponible'): ?>
-                                <span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>
-                            <?php elseif($row['estado'] == 'prestado'): ?>
-                                <span class="bg-red-200 text-red-600 py-1 px-3 rounded-full text-xs">Prestado</span>
-                            <?php endif; ?>
-                        </td>
+
+                      
+<td class="py-3 px-6 text-left" id="estado-<?php echo $row['id_libro']; ?>">
+    <?php if($row['estado'] == 'disponible'): ?>
+        <span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>
+    <?php elseif($row['estado'] == 'prestado'): ?>
+        <span class="bg-red-200 text-red-600 py-1 px-3 rounded-full text-xs">Prestado</span>
+    <?php endif; ?>
+</td>
+
 
                         <td class="py-3 px-6 text-center">
                         <!-- Botón de prestar con confirmación -->
@@ -114,9 +117,14 @@ function devolverLibro(id_libro) {
                 // Actualizar el estado del libro en la tabla
                 $('#estado-' + id_libro).html('<span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>');
                 
+                // Incrementar el número de ejemplares disponibles
+                var ejemplarCell = $('#libro-' + id_libro).find('td:nth-child(3)');
+                var ejemplares = parseInt(ejemplarCell.text()) + 1;
+                ejemplarCell.text(ejemplares);
+
                 // Actualizar los botones en la interfaz
                 var acciones = `
-                    <a href="prestamo_libros.php?id=${id_libro}" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 mr-2">Prestar</a>
+                    <button onclick="confirmarPrestamo(${id_libro})" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 mr-2">Prestar</button>
                     <button onclick="confirmarDevolucion(${id_libro})" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Devolver</button>
                 `;
                 $('#libro-' + id_libro + ' td:last-child').html(acciones);
@@ -126,6 +134,7 @@ function devolverLibro(id_libro) {
         }
     });
 }
+
 
 
     </script>
