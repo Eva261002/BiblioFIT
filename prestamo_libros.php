@@ -90,6 +90,7 @@ if (isset($_POST['accion'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Préstamo de Libros</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> 
 </head>
 <body class="bg-gray-100">
     <div class="container mx-auto py-12">
@@ -171,7 +172,7 @@ if (isset($_POST['accion'])) {
             <h2 class="text-2xl font-bold text-center mb-6">Libros Actualmente Prestados</h2>
             <?php
             // Consulta para obtener los libros actualmente prestados
-            $sql_prestados = "SELECT p.id_prestamo, l.titulo, e.nombre, e.apellido_paterno, e.apellido_materno, p.fecha_prestamo
+            $sql_prestados = "SELECT p.id_prestamo, l.id_libro, l.titulo, e.nombre, e.apellido_paterno, e.apellido_materno, p.fecha_prestamo
                               FROM prestamo p
                               JOIN libros l ON p.id_libro = l.id_libro
                               JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
@@ -186,15 +187,20 @@ if (isset($_POST['accion'])) {
                 echo "<th class='py-3 px-6 text-left'>Título</th>";
                 echo "<th class='py-3 px-6 text-left'>Estudiante</th>";
                 echo "<th class='py-3 px-6 text-left'>Fecha de Préstamo</th>";
+                echo "<th class='py-3 px-6 text-center'>Acciones</th>"; // Nueva columna para Acciones
                 echo "</tr>";
                 echo "</thead>";
                 echo "<tbody class='text-gray-600 text-sm font-light'>";
                 while ($row = $result_prestados->fetch_assoc()) {
                     $nombre_estudiante = htmlspecialchars($row['nombre'] . ' ' . $row['apellido_paterno'] . ' ' . $row['apellido_materno']);
-                    echo "<tr class='border-b border-gray-200 hover:bg-gray-100'>";
+                    echo "<tr class='border-b border-gray-200 hover:bg-gray-100' id='prestamo-" . intval($row['id_prestamo']) . "'>";
                     echo "<td class='py-3 px-6'>" . htmlspecialchars($row['titulo']) . "</td>";
                     echo "<td class='py-3 px-6'>" . $nombre_estudiante . "</td>";
                     echo "<td class='py-3 px-6'>" . htmlspecialchars($row['fecha_prestamo']) . "</td>";
+                    echo "<td class='py-3 px-6 text-center'>";
+                    // Botón de Devolver
+                    echo "<button onclick='confirmarDevolucion(" . intval($row['id_libro']) . ")' class='bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600'>Devolver</button>";
+                    echo "</td>";
                     echo "</tr>";
                 }
                 echo "</tbody>";
@@ -206,5 +212,74 @@ if (isset($_POST['accion'])) {
             ?>
         </div>
     </div>
+
+    <script>
+    function confirmarPrestamo(id_libro) {
+        if (confirm('¿Estás seguro de que deseas prestar este libro?')) {
+            window.location.href = 'prestamo_libros.php?id=' + id_libro;
+        }
+    }
+
+    function confirmarDevolucion(id_libro) {
+    if (confirm('¿Estás seguro de que deseas devolver este libro?')) {
+        // Realizamos la solicitud AJAX
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'devolver_libro.php', true); // El script PHP que manejará la devolución
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                alert('Libro devuelto correctamente.');
+                // Recargar la página o actualizar la interfaz según sea necesario
+                location.reload(); // Esto recarga la página
+            } else {
+                alert('Error al devolver el libro.');
+            }
+        };
+
+        // Enviamos la solicitud con el ID del libro
+        xhr.send('id_libro=' + id_libro + '&accion=devolver');
+    }
+}
+
+
+    function devolverLibro(id_libro) {
+        // Seleccionar la fila correspondiente al préstamo activo
+        var filaPrestamo = $('#prestamo-' + id_libro);
+
+        // Seleccionar el botón de Devolver y deshabilitarlo para prevenir múltiples clics
+        var button = filaPrestamo.find('button');
+        button.prop('disabled', true);
+        button.text('Devolviendo...');
+
+        $.ajax({
+            url: 'devolver_libro.php',
+            type: 'POST',
+            data: { id_libro: id_libro },
+            success: function(response) {
+                if (response.trim() === 'success') {
+                    // Remover la fila del préstamo devuelto
+                    filaPrestamo.fadeOut(500, function() {
+                        $(this).remove();
+                    });
+
+                    // Actualizar el estado del libro en el catálogo
+                    // Opcional: Podrías implementar una llamada AJAX para actualizar el catálogo si está abierto
+                } else {
+                    alert('Error al devolver el libro.');
+                    // Rehabilitar el botón de Devolver en caso de error
+                    button.prop('disabled', false);
+                    button.text('Devolver');
+                }
+            },
+            error: function() {
+                alert('Error al devolver el libro.');
+                // Rehabilitar el botón de Devolver en caso de error
+                button.prop('disabled', false);
+                button.text('Devolver');
+            }
+        });
+    }
+    </script>
 </body>
 </html>

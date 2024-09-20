@@ -76,8 +76,7 @@ $result = $conn->query($sql);
                         <td class="py-3 px-6 text-center">
                             <!-- Botón de Prestar siempre visible -->
                             <button onclick="confirmarPrestamo(<?php echo intval($row['id_libro']); ?>)" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</button>
-                            <!-- Botón de Devolver siempre visible -->
-                            <button onclick="confirmarDevolucion(<?php echo intval($row['id_libro']); ?>)" class="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 text-sm">Devolver</button>
+                            
                         </td>
                     </tr>
                     <?php endwhile; ?>
@@ -88,10 +87,27 @@ $result = $conn->query($sql);
 
     <script>
     function confirmarPrestamo(id_libro) {
-        if (confirm('¿Estás seguro de que deseas prestar este libro?')) {
-            window.location.href = 'prestamo_libros.php?id=' + id_libro;
-        }
+    if (confirm('¿Estás seguro de que deseas prestar este libro?')) {
+        // Realizamos la solicitud AJAX
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', 'prestamo_libros.php', true); // El script PHP que manejará la lógica de préstamo
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                alert('Libro prestado correctamente.');
+                // Recargar la página o actualizar la interfaz según sea necesario
+                location.reload(); // Esto recarga la página
+            } else {
+                alert('Error al prestar el libro.');
+            }
+        };
+
+        // Enviamos la solicitud con el ID del libro
+        xhr.send('id_libro=' + id_libro + '&accion=prestar');
     }
+}
+
 
     function confirmarDevolucion(id_libro) {
         if (confirm('¿Estás seguro de que deseas devolver este libro?')) {
