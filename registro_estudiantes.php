@@ -98,7 +98,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </html>
 
 <?php
-//consultar libros prestados sin devolucion---libros pendientes
-//prestamo de libros por carrera
-//reporte de asistencia de estudiantes(por carrera)
-// reportes de prestamo por periodos ----en rango de fecha
