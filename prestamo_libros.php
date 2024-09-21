@@ -10,8 +10,8 @@ $ejemplares_disponibles = 0;
 $id_libro = null;
 
 // Verificar si se ha proporcionado un id_libro
-if (isset($_GET['id'])) {
-    $id_libro = intval($_GET['id']);
+if (isset($_GET['id_libro'])) {
+    $id_libro = intval($_GET['id_libro']);
     // Consulta para obtener el nombre y ejemplares del libro basado en el id_libro
     $sql_libro = "SELECT titulo, ejemplar FROM libros WHERE id_libro = $id_libro";
     $result_libro = $conn->query($sql_libro);
@@ -26,7 +26,7 @@ if (isset($_GET['id'])) {
     }
 }
 
-if (isset($_POST['accion'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     $accion = $_POST['accion'];
     $id_libro = isset($_POST['id_libro']) ? intval($_POST['id_libro']) : null;
     $id_estudiante = isset($_POST['id_estudiante']) ? intval($_POST['id_estudiante']) : null;
@@ -46,7 +46,7 @@ if (isset($_POST['accion'])) {
             // Verificar si hay ejemplares disponibles
             $sql_check_ejemplares = "SELECT ejemplar FROM libros WHERE id_libro = $id_libro";
             $result_ejemplares = $conn->query($sql_check_ejemplares);
-            $ejemplares = $result_ejemplares->fetch_assoc()['ejemplar'];
+            $ejemplares = intval($result_ejemplares->fetch_assoc()['ejemplar']);
 
             if ($ejemplares <= 0) {
                 throw new Exception('No hay ejemplares disponibles para prestar.');
@@ -88,32 +88,55 @@ if (isset($_POST['accion'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Préstamo de Libros</title>
+    <title>Préstamo de Libros - Sistema de Biblioteca</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> 
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto py-12">
+<body class="bg-gray-100 flex flex-col min-h-screen">
+    <!-- Encabezado -->
+    <header class="bg-blue-600 shadow">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <!-- Icono de Biblioteca -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <!-- Contenido del SVG -->
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0H7a1 1 0 01-1-1v-2" />
+                </svg>
+                <a href="index.php" class="text-white text-2xl font-bold">Sistema de Biblioteca</a>
+            </div>
+            <div>
+                <a href="index.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Inicio</a>
+                <a href="catalogo_libros.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Catálogo</a>
+                <a href="reportes.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Reportes</a>
+                <a href="listar_estudiantes.php" class="bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-800 transition">Estudiantes</a>
+            </div>
+        </nav>
+    </header>
 
-<!-- Botón-->
-    <div class="flex justify-start mb-6">
-            <a href="catalogo_libros.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Volver</a>
+    <!-- Contenido Principal -->
+    <main class="container mx-auto px-6 py-12 flex-grow">
+        <!-- Botón para volver al catálogo -->
+        <div class="flex justify-start mb-6">
+            <a href="catalogo_libros.php" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">Volver al Catálogo</a>
         </div>
+
         <h1 class="text-3xl font-bold text-center mb-6">Préstamo de Libros</h1>
 
         <?php if ($id_libro !== null): ?>
             <!-- Mostrar el nombre del libro y ejemplares disponibles -->
-            <div class="mb-6">
-                <p><strong>Libro a prestar:</strong> <?php echo $titulo_libro; ?></p>
-                <p><strong>Ejemplares disponibles:</strong> <?php echo $ejemplares_disponibles; ?></p>
+            <div class="mb-6 bg-white p-6 rounded-lg shadow-md">
+                <p class="text-lg"><strong>Libro a prestar:</strong> <?php echo $titulo_libro; ?></p>
+                <p class="text-lg"><strong>Ejemplares disponibles:</strong> <?php echo $ejemplares_disponibles; ?></p>
             </div>
 
             <!-- Barra de búsqueda -->
-            <form action="prestamo_libros.php" method="GET" class="mb-6">
-                <input type="hidden" name="id" value="<?php echo $id_libro; ?>">
-                <input type="text" name="search" placeholder="Buscar estudiante por RU o CI" 
-                       class="w-full p-3 border border-gray-300 rounded-md shadow-sm">
-                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 mt-2">Buscar</button>
+            <form action="prestamo_libros.php" method="GET" class="mb-6 bg-white p-6 rounded-lg shadow-md">
+                <input type="hidden" name="id_libro" value="<?php echo $id_libro; ?>">
+                <div class="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
+                    <input type="text" name="search" placeholder="Buscar estudiante por RU o CI" 
+                           class="w-full md:w-2/3 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500">
+                    <button type="submit" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition-colors">Buscar</button>
+                </div>
             </form>
 
             <?php
@@ -158,7 +181,7 @@ if (isset($_POST['accion'])) {
                         echo "<input type='hidden' name='id_estudiante' value='" . intval($row['id_estudiante']) . "'>";
                         echo "<input type='hidden' name='accion' value='prestar'>";
                         if (!$has_prestamo) {
-                            echo "<button type='submit' class='bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600'>Prestar</button>";
+                            echo "<button type='submit' class='bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors'>Prestar</button>";
                         } else {
                             echo "<button type='button' class='bg-gray-500 text-white px-4 py-2 rounded-md cursor-not-allowed' disabled>No puede Prestar</button>";
                         }
@@ -166,7 +189,7 @@ if (isset($_POST['accion'])) {
                         echo "</div>";
                     }
                 } else {
-                    echo "<p class='text-red-500'>No se encontró ningún estudiante con ese RU o CI.</p>";
+                    echo "<p class='text-red-500 text-center'>No se encontró ningún estudiante con ese RU o CI.</p>";
                 }
             }
             ?>
@@ -204,7 +227,7 @@ if (isset($_POST['accion'])) {
                     echo "<td class='py-3 px-6'>" . htmlspecialchars($row['fecha_prestamo']) . "</td>";
                     echo "<td class='py-3 px-6 text-center'>";
                     // Botón de Devolver
-                    echo "<button onclick='confirmarDevolucion(" . intval($row['id_libro']) . ")' class='bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600'>Devolver</button>";
+                    echo "<button onclick='confirmarDevolucion(" . intval($row['id_prestamo']) . ")' class='bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600'>Devolver</button>";
                     echo "</td>";
                     echo "</tr>";
                 }
@@ -216,75 +239,64 @@ if (isset($_POST['accion'])) {
             }
             ?>
         </div>
-    </div>
+    </main>
 
+    <!-- Pie de Página -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto text-center">
+            &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
+        </div>
+    </footer>
+
+    <!-- Scripts -->
     <script>
-    function confirmarPrestamo(id_libro) {
-        if (confirm('¿Estás seguro de que deseas prestar este libro?')) {
-            window.location.href = 'prestamo_libros.php?id=' + id_libro;
-        }
-    }
-
-    function confirmarDevolucion(id_libro) {
+function confirmarDevolucion(id_prestamo) {
     if (confirm('¿Estás seguro de que deseas devolver este libro?')) {
-        // Realizamos la solicitud AJAX
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', 'devolver_libro.php', true); // El script PHP que manejará la devolución
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-        xhr.onload = function () {
-            if (xhr.status === 200) {
-                alert('Libro devuelto correctamente.');
-                // Recargar la página o actualizar la interfaz según sea necesario
-                location.reload(); // Esto recarga la página
-            } else {
-                alert('Error al devolver el libro.');
-            }
-        };
-
-        // Enviamos la solicitud con el ID del libro
-        xhr.send('id_libro=' + id_libro + '&accion=devolver');
+        devolverLibro(id_prestamo);
     }
 }
 
+function devolverLibro(id_prestamo) {
+    // Seleccionar la fila correspondiente al préstamo activo
+    var filaPrestamo = $('#prestamo-' + id_prestamo);
 
-    function devolverLibro(id_libro) {
-        // Seleccionar la fila correspondiente al préstamo activo
-        var filaPrestamo = $('#prestamo-' + id_libro);
+    // Seleccionar el botón de Devolver y deshabilitarlo para prevenir múltiples clics
+    var button = filaPrestamo.find('button');
+    button.prop('disabled', true);
+    button.text('Devolviendo...');
 
-        // Seleccionar el botón de Devolver y deshabilitarlo para prevenir múltiples clics
-        var button = filaPrestamo.find('button');
-        button.prop('disabled', true);
-        button.text('Devolviendo...');
-
-        $.ajax({
-            url: 'devolver_libro.php',
-            type: 'POST',
-            data: { id_libro: id_libro },
-            success: function(response) {
-                if (response.trim() === 'success') {
-                    // Remover la fila del préstamo devuelto
-                    filaPrestamo.fadeOut(500, function() {
-                        $(this).remove();
-                    });
-
-                    // Actualizar el estado del libro en el catálogo
-                    // Opcional: Podrías implementar una llamada AJAX para actualizar el catálogo si está abierto
-                } else {
-                    alert('Error al devolver el libro.');
-                    // Rehabilitar el botón de Devolver en caso de error
-                    button.prop('disabled', false);
-                    button.text('Devolver');
-                }
-            },
-            error: function() {
-                alert('Error al devolver el libro.');
+    $.ajax({
+        url: 'devolver_libro.php',
+        type: 'POST',
+        data: { id_prestamo: id_prestamo, accion: 'devolver' },
+        success: function(response) {
+            if (response.trim() === 'success') {
+                // Remover la fila del préstamo devuelto
+                filaPrestamo.fadeOut(500, function() {
+                    $(this).remove();
+                });
+            } else {
+                // Mostrar el mensaje de error detallado para depuración
+                alert('Error al devolver el libro: ' + response);
                 // Rehabilitar el botón de Devolver en caso de error
                 button.prop('disabled', false);
                 button.text('Devolver');
             }
-        });
-    }
-    </script>
+        },
+        error: function() {
+            alert('Error al devolver el libro.');
+            // Rehabilitar el botón de Devolver en caso de error
+            button.prop('disabled', false);
+            button.text('Devolver');
+        }
+    });
+}
+</script>
+
+
 </body>
 </html>
+
+<?php
+$conn->close();
+?>
