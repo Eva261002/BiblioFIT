@@ -19,6 +19,8 @@ $result = $conn->query($sql);
     <title>Catálogo de Libros</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="scripts/catalogo_libros.js"></script>
+
 </head>
 <body class="bg-gray-100">
     <!-- Encabezado -->
@@ -107,13 +109,6 @@ $result = $conn->query($sql);
             &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
         </div>
     </footer>
-    <script>
-    function confirmarPrestamo(id_libro) {
-        if (confirm('¿Estás seguro de que deseas prestar este libro?')) {
-            // Redirigir a prestamo_libros.php con el id_libro
-            window.location.href = 'prestamo_libros.php?id_libro=' + id_libro;
-        }
-    }
-    </script>
+    
 </body>
 </html>

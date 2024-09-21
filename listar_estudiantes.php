@@ -33,6 +33,7 @@ $result = $stmt->get_result();
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <!-- Heroicons para iconos -->
     <script src="https://unpkg.com/heroicons@1.0.6/dist/heroicons.min.js"></script>
+    
     <style>
         
     </style>
@@ -159,8 +160,6 @@ $result = $stmt->get_result();
         </div>
     </footer>
 
-    <!-- Librería de Heroicons (si es necesario) -->
-    <script src="https://unpkg.com/heroicons@1.0.6/dist/heroicons.min.js"></script>
 </body>
 </html>
 <?php

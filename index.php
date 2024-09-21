@@ -90,9 +90,6 @@
         </div>
     </footer>
 
-    <!-- Script Opcional para Interactividad Adicional -->
-    <script>
-        // Puedes añadir scripts adicionales aquí para mejorar la interactividad
-    </script>
+    
 </body>
 </html>

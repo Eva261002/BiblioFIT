@@ -91,6 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     <title>Préstamo de Libros - Sistema de Biblioteca</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> 
+    <script src="scripts/prestamo_libros.js"></script>
+
 </head>
 <body class="bg-gray-100 flex flex-col min-h-screen">
     <!-- Encabezado -->
@@ -244,51 +246,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
             &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
         </div>
     </footer>
-
-    <!-- Scripts -->
-    <script>
-function confirmarDevolucion(id_prestamo) {
-    if (confirm('¿Estás seguro de que deseas devolver este libro?')) {
-        devolverLibro(id_prestamo);
-    }
-}
-
-function devolverLibro(id_prestamo) {
-    // Seleccionar la fila correspondiente al préstamo activo
-    var filaPrestamo = $('#prestamo-' + id_prestamo);
-
-    // Seleccionar el botón de Devolver y deshabilitarlo para prevenir múltiples clics
-    var button = filaPrestamo.find('button');
-    button.prop('disabled', true);
-    button.text('Devolviendo...');
-
-    $.ajax({
-        url: 'devolver_libro.php',
-        type: 'POST',
-        data: { id_prestamo: id_prestamo, accion: 'devolver' },
-        success: function(response) {
-            if (response.trim() === 'success') {
-                // Remover la fila del préstamo devuelto
-                filaPrestamo.fadeOut(500, function() {
-                    $(this).remove();
-                });
-            } else {
-                // Mostrar el mensaje de error detallado para depuración
-                alert('Error al devolver el libro: ' + response);
-                // Rehabilitar el botón de Devolver en caso de error
-                button.prop('disabled', false);
-                button.text('Devolver');
-            }
-        },
-        error: function() {
-            alert('Error al devolver el libro.');
-            // Rehabilitar el botón de Devolver en caso de error
-            button.prop('disabled', false);
-            button.text('Devolver');
-        }
-    });
-}
-</script>
 
 
 </body>
