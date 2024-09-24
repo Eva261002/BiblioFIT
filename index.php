@@ -13,7 +13,8 @@
     <header class="bg-blue-600 shadow">
         <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
             <div class="flex items-center">
-                <!-- Icono de Biblioteca  -->
+                <!-- Icono de Biblioteca   -->
+                 <!-- <img src="images/fit.png" alt="Logo del Sistema" class="h-16 mr-4">-->
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0H7a1 1 0 01-1-1V5a1 1 0 011-1h3m6 0h3a1 1 0 011 1v10a1 1 0 01-1 1h-3" />
                 </svg>
@@ -33,6 +34,7 @@
     <!-- Sección de Bienvenida -->
     <section class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
         <div class="container mx-auto px-6 py-20 text-center">
+            
             <h2 class="text-4xl font-bold mb-4">Bienvenido al Sistema de Biblioteca</h2>
             <p class="text-lg mb-8">Gestiona y administra tus préstamos de manera eficiente y sencilla.</p>
             <a href="catalogo_libros.php" class="bg-white text-blue-600 px-6 py-3 rounded-full font-semibold hover:bg-gray-200 transition transform hover:scale-105">Explorar Catálogo</a>

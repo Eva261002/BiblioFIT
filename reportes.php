@@ -1,139 +1,65 @@
-
-<?php
-
-
-
-
-//consultar libros prestados sin devolucion---libros pendientes
-//prestamo de libros por carrera
-//reporte de asistencia de estudiantes(por carrera)
-// reportes de prestamo por periodos ----en rango de fecha
-
-
-include('includes/db.php');
-require 'vendor/autoload.php'; // Asegúrate de tener Composer instalado y PhpSpreadsheet
-
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
-// Consulta para obtener los libros más prestados
-$sql_mas_prestados = "SELECT l.titulo, COUNT(p.id_prestamo) AS cantidad_prestamos 
-                      FROM prestamo p 
-                      JOIN libros l ON p.id_libro = l.id_libro 
-                      GROUP BY p.id_libro 
-                      ORDER BY cantidad_prestamos DESC 
-                      LIMIT 10";
-$result_mas_prestados = $conn->query($sql_mas_prestados);
-
-// Preparar datos para Chart.js
-$labels = [];
-$datos = [];
-while($row = $result_mas_prestados->fetch_assoc()) {
-    $labels[] = $row['titulo'];
-    $datos[] = $row['cantidad_prestamos'];
-}
-
-// Exportar a Excel si se solicita
-if(isset($_POST['exportar_excel'])) {
-    $spreadsheet = new Spreadsheet();
-    $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setCellValue('A1', 'Título');
-    $sheet->setCellValue('B1', 'Número de Préstamos');
-
-    $fila = 2;
-    $result_mas_prestados->data_seek(0); // Reiniciar el puntero de resultados
-    while($row = $result_mas_prestados->fetch_assoc()) {
-        $sheet->setCellValue('A' . $fila, $row['titulo']);
-        $sheet->setCellValue('B' . $fila, $row['cantidad_prestamos']);
-        $fila++;
-    }
-
-    $writer = new Xlsx($spreadsheet);
-    $nombre_archivo = 'Reporte_Libros_Mas_Prestados.xlsx';
-    header('Content-Type: application/vnd.ms-excel');
-    header('Content-Disposition: attachment;filename="'. $nombre_archivo .'"');
-    header('Cache-Control: max-age=0');
-    $writer->save('php://output');
-    exit();
-}
-?>
-<!DOCTYPE html>
+ <!--consultar libros prestados sin devolucion---libros pendientes  -->
+ <!-- prestamo de libros por carrera -->
+ <!-- reporte de asistencia de estudiantes(por carrera) -->
+   <!-- reportes de prestamo por periodos ----en rango de fecha -->
+   <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reportes de Préstamos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes - Sistema de Biblioteca</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.css">
-<script type="text/javascript" charset="utf8" src="https://code.jquery.com/jquery-3.5.1.js"></script>
-<script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.js"></script>
-
-
-
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto py-12">
-        <h1 class="text-3xl font-bold text-center mb-6">Reportes de Préstamos</h1>
-        
-        <!-- Gráfico de Libros Más Prestados -->
-        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h2 class="text-2xl font-bold mb-4">Libros Más Prestados</h2>
-            <canvas id="grafico-prestamos" width="400" height="200"></canvas>
-        </div>
-        
-        <!-- Botón para Exportar a Excel -->
-        <div class="flex justify-end mb-6">
-            <form method="POST">
-                <button type="submit" name="exportar_excel" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600">Exportar a Excel</button>
-            </form>
-        </div>
-        
-        <!-- Tabla de Libros Más Prestados -->
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-bold mb-4">Tabla de Libros Más Prestados</h2>
-            <table id="tabla-reportes" class="display">
-                <thead>
-                    <tr>
-                        <th>Título</th>
-                        <th>Número de Préstamos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while($row = $result_mas_prestados->fetch_assoc()): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($row['titulo']); ?></td>
-                        <td><?php echo intval($row['cantidad_prestamos']); ?></td>
-                    </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    
-    <script>
-    $(document).ready(function() {
-        $('#tabla-reportes').DataTable();
-    });
+<body class="bg-gray-100 flex flex-col min-h-screen">
+    <!-- Encabezado -->
+    <header class="bg-blue-600 shadow">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <a href="#" class="text-white text-2xl font-bold">Sistema de Biblioteca</a>
+            </div>
+        </nav>
+    </header>
 
-    var ctx = document.getElementById('grafico-prestamos').getContext('2d');
-    var graficoPrestamos = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: <?php echo json_encode($labels); ?>,
-            datasets: [{
-                label: '# de Préstamos',
-                data: <?php echo json_encode($datos); ?>,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor:'rgba(75, 192, 192, 1)',
-                borderWidth:1
-            }]
-        },
-        options: {
-            scales: {
-                y: { beginAtZero: true }
-            }
-        }
-    });
-    </script>
+    <!-- Sección de Reportes -->
+    <section class="container mx-auto px-6 py-12">
+        <h2 class="text-3xl font-bold text-gray-800 text-center mb-8">Generar Reportes</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+            <!-- Reporte de Asistencia -->
+            <div class="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center hover:shadow-2xl transition transform hover:-translate-y-2">
+                <h3 class="text-xl font-semibold mb-2">Reporte de Asistencia</h3>
+                <p class="text-center text-gray-600 mb-4">Asistencia de estudiantes por carrera</p>
+                <button onclick="location.href='reporte_asistencia.php'" class="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-700 transition">Generar Reporte</button>
+            </div>
+
+            <!-- Reporte de Libros Prestados -->
+            <div class="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center hover:shadow-2xl transition transform hover:-translate-y-2">
+                <h3 class="text-xl font-semibold mb-2">Libros Prestados</h3>
+                <p class="text-center text-gray-600 mb-4">Listado de libros que fueron prestados</p>
+                <button onclick="location.href='reporte_libros_prestados.php'" class="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-700 transition">Generar Reporte</button>
+            </div>
+
+            <!-- Préstamos por Carrera -->
+            <div class="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center hover:shadow-2xl transition transform hover:-translate-y-2">
+                <h3 class="text-xl font-semibold mb-2">Préstamos por Carrera</h3>
+                <p class="text-center text-gray-600 mb-4">Préstamos de libros por carrera</p>
+                <button onclick="location.href='reporte_prestamos_por_carrera.php'" class="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-700 transition">Generar Reporte</button>
+            </div>
+
+            <!-- Reporte por Periodo -->
+            <div class="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center hover:shadow-2xl transition transform hover:-translate-y-2">
+                <h3 class="text-xl font-semibold mb-2">Reportes por Periodo</h3>
+                <p class="text-center text-gray-600 mb-4">Selecciona rango de fechas</p>
+                <button onclick="location.href='reporte_por_periodo.php'" class="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-blue-700 transition">Generar Reporte</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pie de Página -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto text-center">
+            &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
+        </div>
+    </footer>
 </body>
 </html>
