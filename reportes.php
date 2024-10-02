@@ -27,7 +27,7 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
                       JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
                       WHERE p.fecha_prestamo BETWEEN '$fecha_inicio' AND '$fecha_fin'";
             break;
-            case 'prestamos_carrera':
+            case 'prestamos_libros':
                 // Obtener el total de préstamos por carrera
                 $query = "SELECT e.carrera, COUNT(*) AS total_prestamos 
                           FROM prestamo p 
@@ -104,8 +104,7 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
                     <label for="tipo_reporte" class="block text-gray-700">Tipo de Reporte:</label>
                     <select name="tipo_reporte" id="tipo_reporte" class="w-full border border-gray-300 rounded-md px-3 py-2">
                         <option value="asistencia">Asistencia por Carrera</option>
-                        <option value="libros_prestados">Libros Prestados</option>
-                        <option value="prestamos_carrera">Préstamos por Carrera</option>
+                        <option value="prestamos_libros">Préstamos de libros</option>
                     </select>
                 </div>
 
@@ -160,7 +159,7 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
                 <td class="py-2 border-b"><?php echo $row['tiempo_promedio']; ?></td>
                 </td>
                 <td class="py-2 border-b"><?php echo $row['total_asistencia']; ?></td>
-            <?php elseif ($tipo_reporte == 'prestamos_carrera'): ?>
+            <?php elseif ($tipo_reporte == 'prestamos_libros'): ?>
                 <td class="py-2 border-b"><?php echo $row['carrera']; ?></td>
                 <td class="py-2 border-b"><?php echo $row['total_prestamos']; ?></td>
             <?php elseif ($tipo_reporte == 'libros_prestados'): ?>
@@ -174,6 +173,7 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
             <?php endif; ?>
         </tr>
     <?php endwhile; ?>
+    
     </table>
                 <div class="bg-white rounded-lg shadow-lg p-6 mt-6">
     <h3 class="text-xl font-semibold mb-4 text-gray-800">Libros Más Prestados</h3>
