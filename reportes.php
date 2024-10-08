@@ -1,6 +1,6 @@
 <?php
 include('includes/db.php');
-include('fpdf/fpdf.php');
+require('fpdf/fpdf.php');
 
 
 // Inicializar variables
@@ -132,16 +132,17 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
     </div>
 </form>
 
-        <!-- Descargar PDF -->
+        </div>
+
+          <!-- Descargar PDF -->
 <form method="POST" action="generar_pdf.php">
     <input type="hidden" name="tipo_reporte" value="<?php echo $tipo_reporte; ?>">
     <input type="hidden" name="fecha_inicio" value="<?php echo $fecha_inicio; ?>">
     <input type="hidden" name="fecha_fin" value="<?php echo $fecha_fin; ?>">
-    <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded">Descargar PDF</button>
+    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Descargar PDF
+    </button>
 </form>
-
-
-        </div>
 
         <!-- Resultados del Reporte -->
         <div class="bg-white rounded-lg shadow-lg p-6">
