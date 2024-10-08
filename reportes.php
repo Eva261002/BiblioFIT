@@ -1,5 +1,7 @@
 <?php
 include('includes/db.php');
+include('fpdf/fpdf.php');
+
 
 // Inicializar variables
 $tipo_reporte = $_POST['tipo_reporte'] ?? '';
@@ -60,6 +62,8 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
         $reporte_resultado = $conn->query($query);
     }
 }
+
+
 ?>
 
 <!DOCTYPE html>
@@ -98,31 +102,45 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
         <!-- Formulario de Reportes -->
         <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
             <h2 class="text-2xl font-semibold mb-4 text-gray-800">Generar Reporte</h2>
+
             <form method="POST" action="" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Tipo de Reporte -->
-                <div>
-                    <label for="tipo_reporte" class="block text-gray-700">Tipo de Reporte:</label>
-                    <select name="tipo_reporte" id="tipo_reporte" class="w-full border border-gray-300 rounded-md px-3 py-2">
-                        <option value="asistencia">Asistencia por Carrera</option>
-                        <option value="prestamos_libros">Préstamos de libros</option>
-                    </select>
-                </div>
+    <!-- Tipo de Reporte -->
+    <div class="col-span-2 md:col-span-1">
+        <label for="tipo_reporte" class="block text-gray-700">Tipo de Reporte:</label>
+        <select name="tipo_reporte" id="tipo_reporte" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            <option value="asistencia">Asistencia por Carrera</option>
+            <option value="prestamos_libros">Préstamos de libros</option>
+        </select>
+    </div>
 
-                <!-- Rango de Fecha -->
-                <div>
-                    <label for="fecha_inicio" class="block text-gray-700">Fecha de Inicio:</label>
-                    <input type="date" name="fecha_inicio" id="fecha_inicio" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
-                </div>
-                <div>
-                    <label for="fecha_fin" class="block text-gray-700">Fecha de Fin:</label>
-                    <input type="date" name="fecha_fin" id="fecha_fin" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
-                </div>
+    
+    <!-- Rango de Fecha en una sola fila -->
+    <div class="col-span-2 grid grid-cols-2 gap-4">
+        <div>
+            <label for="fecha_inicio" class="block text-gray-700">Fecha de Inicio:</label>
+            <input type="date" name="fecha_inicio" id="fecha_inicio" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+        </div>
+        <div>
+            <label for="fecha_fin" class="block text-gray-700">Fecha de Fin:</label>
+            <input type="date" name="fecha_fin" id="fecha_fin" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+        </div>
+    </div>
 
-                <!-- Botón de Generar Reporte -->
-                <div class="md:col-span-2">
-                    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition">Generar Reporte</button>
-                </div>
-            </form>
+    <!-- Botón de Generar Reporte -->
+    <div class="md:col-span-2">
+        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition">Generar Reporte</button>
+    </div>
+</form>
+
+        <!-- Descargar PDF -->
+<form method="POST" action="generar_pdf.php">
+    <input type="hidden" name="tipo_reporte" value="<?php echo $tipo_reporte; ?>">
+    <input type="hidden" name="fecha_inicio" value="<?php echo $fecha_inicio; ?>">
+    <input type="hidden" name="fecha_fin" value="<?php echo $fecha_fin; ?>">
+    <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded">Descargar PDF</button>
+</form>
+
+
         </div>
 
         <!-- Resultados del Reporte -->
@@ -201,6 +219,19 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
             }
         }
     });
+    //validacion para rango de fecha
+    document.querySelector('form').addEventListener('submit', function(event) {
+    const fechaInicio = new Date(document.getElementById('fecha_inicio').value);
+    const fechaFin = new Date(document.getElementById('fecha_fin').value);
+    
+    if (fechaFin < fechaInicio) {
+        event.preventDefault();
+        alert('La fecha de fin no puede ser anterior a la fecha de inicio.');
+    }
+});
+
+
+
 </script>
 
 </tbody>
