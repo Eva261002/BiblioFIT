@@ -140,108 +140,111 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
     <input type="hidden" name="fecha_inicio" value="<?php echo $fecha_inicio; ?>">
     <input type="hidden" name="fecha_fin" value="<?php echo $fecha_fin; ?>">
     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-        Descargar PDF
+        Ver en PDF
     </button>
 </form>
 
-        <!-- Resultados del Reporte -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
-            <h3 class="text-xl font-semibold mb-4 text-gray-800">Resultados del Reporte</h3>
-            <?php if ($reporte_resultado && $reporte_resultado->num_rows > 0): ?>
+<!-- Resultados del Reporte -->
+<div class="bg-white rounded-lg shadow-lg p-6">
+    <h3 class="text-xl font-semibold mb-4 text-gray-800">Resultados del Reporte</h3>
+    <?php if ($reporte_resultado && $reporte_resultado->num_rows > 0): ?>
+        <?php if ($tipo_reporte == 'asistencia'): ?>
+            <!-- Tabla Resumen -->
+            <h4 class="text-lg font-semibold mb-2">Resumen por Carrera</h4>
+            <table class="min-w-full bg-white border-collapse mb-6">
+                <thead>
+                    <tr>
+                        <th class="py-2 border-b">Carrera</th>
+                        <th class="py-2 border-b">Tiempo Promedio</th>
+                        <th class="py-2 border-b">Total Asistencias</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($row = $reporte_resultado->fetch_assoc()): ?>
+                        <tr>
+                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['carrera']); ?></td>
+                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['tiempo_promedio']); ?></td>
+                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['total_asistencia']); ?></td>
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+            
+            <!-- Consulta para Detalles por Estudiante -->
+            <?php
+            $query_detalle = "SELECT e.carrera, e.nombre, e.apellido_paterno, 
+                                     SEC_TO_TIME(TIMESTAMPDIFF(SECOND, es.hora_entrada, es.hora_salida)) AS tiempo_estancia 
+                              FROM entradas_salidas es
+                              JOIN estudiantes e ON es.id_estudiante = e.id_estudiante
+                              WHERE es.hora_entrada BETWEEN '$fecha_inicio' AND '$fecha_fin'
+                              ORDER BY e.carrera, e.nombre";
+            
+            $resultado_detalle = $conn->query($query_detalle);
+            ?>
+            
+            <?php if ($resultado_detalle && $resultado_detalle->num_rows > 0): ?>
+                <!-- Tabla Detallada -->
+                <h4 class="text-lg font-semibold mb-2">Detalle por Carrera y Estudiante</h4>
                 <table class="min-w-full bg-white border-collapse">
                     <thead>
                         <tr>
-                            <?php if ($tipo_reporte == 'asistencia'): ?>
-                                <th class="py-2 border-b">Carrera</th>
-                                <th class="py-2 border-b">Tiempo Promedio</th>
-                                <th class="py-2 border-b">Total</th>
-                            <?php elseif ($tipo_reporte == 'prestamos_carrera'): ?>
-                                <th class="py-2 border-b">Carrera</th>
-                                <th class="py-2 border-b">Total</th>
-                            <?php elseif ($tipo_reporte == 'libros_prestados'): ?>
-                                <th class="py-2 border-b">Título</th>
-                                <th class="py-2 border-b">Autor</th>
-                                <th class="py-2 border-b">Fecha Préstamo</th>
-                                <th class="py-2 border-b">Fecha Devolución</th>
-                                <th class="py-2 border-b">Nombre Estudiante</th>
-                                <th class="py-2 border-b">Apellido</th>
-                                <th class="py-2 border-b">Carrera</th>
-                            <?php endif; ?>
+                            <th class="py-2 border-b">Carrera</th>
+                            <th class="py-2 border-b">Nombre Estudiante</th>
+                            <th class="py-2 border-b">Tiempo en Biblioteca</th>
                         </tr>
                     </thead>
                     <tbody>
-    <?php while ($row = $reporte_resultado->fetch_assoc()): ?>
-        <tr>
-            <?php if ($tipo_reporte == 'asistencia'): ?>
-                <td class="py-2 border-b"><?php echo $row['carrera']; ?></td>
-                <!-- Mostramos el tiempo promedio separado -->
-                <td class="py-2 border-b"><?php echo $row['tiempo_promedio']; ?></td>
-                </td>
-                <td class="py-2 border-b"><?php echo $row['total_asistencia']; ?></td>
-            <?php elseif ($tipo_reporte == 'prestamos_libros'): ?>
-                <td class="py-2 border-b"><?php echo $row['carrera']; ?></td>
-                <td class="py-2 border-b"><?php echo $row['total_prestamos']; ?></td>
-            <?php elseif ($tipo_reporte == 'libros_prestados'): ?>
-                <td class="py-2 border-b"><?php echo $row['titulo']; ?></td>
-                <td class="py-2 border-b"><?php echo $row['autor']; ?></td>
-                <td class="py-2 border-b"><?php echo $row['fecha_prestamo']; ?></td>
-                <td class="py-2 border-b"><?php echo $row['fecha_devolucion']; ?></td>
-                <td class="py-2 border-b"><?php echo $row['nombre']; ?></td>
-                <td class="py-2 border-b"><?php echo $row['apellido_paterno']; ?></td>
-                <td class="py-2 border-b"><?php echo $row['carrera']; ?></td>
+                        <?php while ($row_detalle = $resultado_detalle->fetch_assoc()): ?>
+                            <tr>
+                                <td class="py-2 border-b"><?php echo htmlspecialchars($row_detalle['carrera']); ?></td>
+                                <td class="py-2 border-b"><?php echo htmlspecialchars($row_detalle['nombre'] . ' ' . $row_detalle['apellido_paterno']); ?></td>
+                                <td class="py-2 border-b"><?php echo htmlspecialchars($row_detalle['tiempo_estancia']); ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
             <?php endif; ?>
-        </tr>
-    <?php endwhile; ?>
-    
-    </table>
-                <div class="bg-white rounded-lg shadow-lg p-6 mt-6">
-    <h3 class="text-xl font-semibold mb-4 text-gray-800">Libros Más Prestados</h3>
-    <canvas id="chartLibrosPrestados"></canvas>
+        <?php elseif ($tipo_reporte == 'prestamos_libros'): ?>
+            <!-- Lógica para otros tipos de reportes -->
+            <!-- Tu lógica actual para mostrar otros reportes -->
+        <?php endif; ?>
+        
+        <!-- Gráfico de Libros Más Prestados (si aplica) -->
+        <?php if ($tipo_reporte == 'prestamos_libros' && !empty($libros_titulos)): ?>
+            <div class="bg-white rounded-lg shadow-lg p-6 mt-6">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">Libros Más Prestados</h3>
+                <canvas id="chartLibrosPrestados"></canvas>
+            </div>
+            <script>
+                var ctx = document.getElementById('chartLibrosPrestados').getContext('2d');
+                var chartLibrosPrestados = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: <?php echo json_encode($libros_titulos); ?>,
+                        datasets: [{
+                            label: 'Total de Préstamos',
+                            data: <?php echo json_encode($libros_prestamos); ?>,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            </script>
+        <?php endif; ?>
+    <?php else: ?>
+        <p class="text-gray-600">No se encontraron resultados para el rango de fechas seleccionado.</p>
+    <?php endif; ?>
 </div>
-    <script>
-    var ctx = document.getElementById('chartLibrosPrestados').getContext('2d');
-    var chartLibrosPrestados = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: <?php echo json_encode($libros_titulos); ?>,
-            datasets: [{
-                label: 'Total de Préstamos',
-                data: <?php echo json_encode($libros_prestamos); ?>,
-                backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-    //validacion para rango de fecha
-    document.querySelector('form').addEventListener('submit', function(event) {
-    const fechaInicio = new Date(document.getElementById('fecha_inicio').value);
-    const fechaFin = new Date(document.getElementById('fecha_fin').value);
-    
-    if (fechaFin < fechaInicio) {
-        event.preventDefault();
-        alert('La fecha de fin no puede ser anterior a la fecha de inicio.');
-    }
-});
 
 
-
-</script>
-
-</tbody>
-
-
-            <?php else: ?>
-                <p class="text-gray-600">No se encontraron resultados para el rango de fechas seleccionado.</p>
-            <?php endif; ?>
-        </div>
     </section>
 </body>
 </html>
