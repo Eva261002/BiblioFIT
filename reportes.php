@@ -2,7 +2,6 @@
 include('includes/db.php');
 require('fpdf/fpdf.php');
 
-
 // Inicializar variables
 $tipo_reporte = $_POST['tipo_reporte'] ?? '';
 $fecha_inicio = $_POST['fecha_inicio'] ?? '';
@@ -21,50 +20,40 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
                       WHERE es.hora_entrada BETWEEN '$fecha_inicio' AND '$fecha_fin' 
                       GROUP BY e.carrera";
             break;
-        
-        case 'libros_prestados':
-            $query = "SELECT l.titulo, l.autor, p.fecha_prestamo, p.fecha_devolucion, e.nombre, e.apellido_paterno, e.carrera 
+
+        case 'prestamos_libros':
+            // Obtener el total de préstamos por carrera
+            $query = "SELECT e.carrera, COUNT(*) AS total_prestamos 
                       FROM prestamo p 
-                      JOIN estudiante l ON p.id_libro = l.id_libro 
                       JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
-                      WHERE p.fecha_prestamo BETWEEN '$fecha_inicio' AND '$fecha_fin'";
+                      WHERE p.fecha_prestamo BETWEEN '$fecha_inicio' AND '$fecha_fin' 
+                      GROUP BY e.carrera";
+
+            // Consulta adicional para obtener los libros más prestados
+            $query_libros = "SELECT l.titulo, COUNT(*) AS total_prestamos 
+                             FROM prestamo p
+                             JOIN libros l ON p.id_libro = l.id_libro
+                             WHERE p.fecha_prestamo BETWEEN '$fecha_inicio' AND '$fecha_fin'
+                             GROUP BY l.titulo
+                             ORDER BY total_prestamos DESC
+                             LIMIT 5";
+            $resultado_libros = $conn->query($query_libros);
+            $libros_titulos = [];
+            $libros_prestamos = [];
+
+            while ($row = $resultado_libros->fetch_assoc()) {
+                $libros_titulos[] = $row['titulo'];
+                $libros_prestamos[] = $row['total_prestamos'];
+            }
             break;
-            case 'prestamos_libros':
-                // Obtener el total de préstamos por carrera
-                $query = "SELECT e.carrera, COUNT(*) AS total_prestamos 
-                          FROM prestamo p 
-                          JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
-                          WHERE p.fecha_prestamo BETWEEN '$fecha_inicio' AND '$fecha_fin' 
-                          GROUP BY e.carrera";
-            
-                // Consulta adicional para obtener los libros más prestados
-                $query_libros = "SELECT l.titulo, COUNT(*) AS total_prestamos 
-                                 FROM prestamo p
-                                 JOIN libros l ON p.id_libro = l.id_libro
-                                 WHERE p.fecha_prestamo BETWEEN '$fecha_inicio' AND '$fecha_fin'
-                                 GROUP BY l.titulo
-                                 ORDER BY total_prestamos DESC
-                                 LIMIT 5";
-                                 $resultado_libros = $conn->query($query_libros);
-                                 $libros_titulos = [];
-                                 $libros_prestamos = [];
-                                 
-                                 while ($row = $resultado_libros->fetch_assoc()) {
-                                     $libros_titulos[] = $row['titulo'];
-                                     $libros_prestamos[] = $row['total_prestamos'];
-                                 }
-                                 
-                break;
-            
     }
 
     if (isset($query)) {
         $reporte_resultado = $conn->query($query);
     }
 }
-
-
 ?>
+
 
 <!DOCTYPE html>
 <html lang="es">
@@ -205,39 +194,55 @@ if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
                 </table>
             <?php endif; ?>
         <?php elseif ($tipo_reporte == 'prestamos_libros'): ?>
-            <!-- Lógica para otros tipos de reportes -->
-            <!-- Tu lógica actual para mostrar otros reportes -->
-        <?php endif; ?>
-        
-        <!-- Gráfico de Libros Más Prestados (si aplica) -->
-        <?php if ($tipo_reporte == 'prestamos_libros' && !empty($libros_titulos)): ?>
-            <div class="bg-white rounded-lg shadow-lg p-6 mt-6">
-                <h3 class="text-xl font-semibold mb-4 text-gray-800">Libros Más Prestados</h3>
-                <canvas id="chartLibrosPrestados"></canvas>
-            </div>
-            <script>
-                var ctx = document.getElementById('chartLibrosPrestados').getContext('2d');
-                var chartLibrosPrestados = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: <?php echo json_encode($libros_titulos); ?>,
-                        datasets: [{
-                            label: 'Total de Préstamos',
-                            data: <?php echo json_encode($libros_prestamos); ?>,
-                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            y: {
-                                beginAtZero: true
+            <!-- Tabla Resumen de Préstamos por Carrera -->
+            <h4 class="text-lg font-semibold mb-2">Resumen de Préstamos por Carrera</h4>
+            <table class="min-w-full bg-white border-collapse mb-6">
+                <thead>
+                    <tr>
+                        <th class="py-2 border-b">Carrera</th>
+                        <th class="py-2 border-b">Total Préstamos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($row = $reporte_resultado->fetch_assoc()): ?>
+                        <tr>
+                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['carrera']); ?></td>
+                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['total_prestamos']); ?></td>
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+
+            <!-- Gráfico de Libros Más Prestados -->
+            <?php if (!empty($libros_titulos)): ?>
+                <div class="bg-white rounded-lg shadow-lg p-6 mt-6">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Libros Más Prestados</h3>
+                    <canvas id="chartLibrosPrestados"></canvas>
+                </div>
+                <script>
+                    var ctx = document.getElementById('chartLibrosPrestados').getContext('2d');
+                    var chartLibrosPrestados = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: <?php echo json_encode($libros_titulos); ?>,
+                            datasets: [{
+                                label: 'Total de Préstamos',
+                                data: <?php echo json_encode($libros_prestamos); ?>,
+                                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
                             }
                         }
-                    }
-                });
-            </script>
+                    });
+                </script>
+            <?php endif; ?>
         <?php endif; ?>
     <?php else: ?>
         <p class="text-gray-600">No se encontraron resultados para el rango de fechas seleccionado.</p>
