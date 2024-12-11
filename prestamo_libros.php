@@ -1,30 +1,39 @@
 <?php
 include('includes/db.php');
 
-// Establecer la zona horaria correcta
-date_default_timezone_set('America/La_Paz'); // Cambia esto por la zona horaria que necesites
+date_default_timezone_set('America/La_Paz');
 
 // Inicializar variables
 $titulo_libro = '';
-$ejemplares_disponibles = 0;
-$id_libro = null;
+$id_libro = isset($_GET['id_libro']) ? intval($_GET['id_libro']) : null;
+$id_ejemplar = isset($_GET['id_ejemplar']) ? intval($_GET['id_ejemplar']) : null;
 
-// Verificar si se ha proporcionado un id_libro
-if (isset($_GET['id_libro'])) {
-    $id_libro = intval($_GET['id_libro']);
-    // Consulta para obtener el nombre y ejemplares del libro basado en el id_libro
-    $sql_libro = "SELECT titulo, ejemplar FROM libros WHERE id_libro = $id_libro";
+if ($id_libro !== null && $id_ejemplar !== null) {
+    // Consulta para obtener el título del libro
+    $sql_libro = "SELECT titulo FROM libros WHERE id_libro = $id_libro";
     $result_libro = $conn->query($sql_libro);
+    
     if ($result_libro->num_rows > 0) {
         $libro = $result_libro->fetch_assoc();
         $titulo_libro = htmlspecialchars($libro['titulo']);
-        $ejemplares_disponibles = intval($libro['ejemplar']);
+
+        // Verificar disponibilidad del ejemplar específico
+        $sql_check_ejemplar = "SELECT estado FROM ejemplares WHERE id_ejemplar = $id_ejemplar AND estado = 'disponible'";
+        $result_check_ejemplar = $conn->query($sql_check_ejemplar);
+        
+        if ($result_check_ejemplar->num_rows <= 0) {
+            echo "<div class='bg-red-200 text-red-700 p-4 rounded'>Error: El ejemplar no está disponible para prestar.</div>";
+            exit();
+        }
     } else {
-        // Manejar el caso en que el libro no exista
         echo "<div class='bg-red-200 text-red-700 p-4 rounded'>Error: Libro no encontrado.</div>";
         exit();
     }
 }
+
+// ... (El resto del código permanece igual, excepto la referencia a id_ejemplar para prestar)
+
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     $accion = $_POST['accion'];
@@ -32,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     $id_estudiante = isset($_POST['id_estudiante']) ? intval($_POST['id_estudiante']) : null;
 
     if ($accion === 'prestar' && $id_libro !== null && $id_estudiante !== null) {
-        $fecha_prestamo = date('Y-m-d H:i:s');  // Incluye la fecha y hora
+        $fecha_prestamo = date('Y-m-d H:i:s');
+        
         $conn->begin_transaction();
         try {
             // Verificar si el estudiante ya tiene un libro prestado
@@ -43,33 +53,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                 throw new Exception('El estudiante ya tiene un libro prestado.');
             }
 
-            // Verificar si hay ejemplares disponibles
-            $sql_check_ejemplares = "SELECT ejemplar FROM libros WHERE id_libro = $id_libro";
+            // Seleccionar un ejemplar disponible para el préstamo
+            $sql_check_ejemplares = "SELECT id_ejemplar FROM ejemplares WHERE id_libro = $id_libro AND estado = 'disponible' LIMIT 1";
             $result_ejemplares = $conn->query($sql_check_ejemplares);
-            $ejemplares = intval($result_ejemplares->fetch_assoc()['ejemplar']);
 
-            if ($ejemplares <= 0) {
+            if ($result_ejemplares->num_rows <= 0) {
                 throw new Exception('No hay ejemplares disponibles para prestar.');
             }
 
-            // Insertar en la tabla de préstamos
+            // Obtener el ID del ejemplar para el préstamo
+            $ejemplar = $result_ejemplares->fetch_assoc();
+            $id_ejemplar = intval($ejemplar['id_ejemplar']);
+
+            // Insertar el préstamo en la base de datos
             $sql_prestamo = "INSERT INTO prestamo (id_libro, id_estudiante, fecha_prestamo, estado) 
-                             VALUES ($id_libro, $id_estudiante, '$fecha_prestamo', 'no disponible')";
+                             VALUES ($id_libro, $id_estudiante, '$fecha_prestamo', 'prestado')";
             if (!$conn->query($sql_prestamo)) {
                 throw new Exception('Error al registrar el préstamo.');
             }
 
-            // Disminuir el número de ejemplares disponibles
-            $sql_update_ejemplares = "UPDATE libros SET ejemplar = ejemplar - 1 WHERE id_libro = $id_libro";
+            // Actualizar el estado del ejemplar a "prestado"
+            $sql_update_ejemplares = "UPDATE ejemplares SET estado = 'prestado' WHERE id_ejemplar = $id_ejemplar";
             if (!$conn->query($sql_update_ejemplares)) {
-                throw new Exception('Error al actualizar el número de ejemplares.');
-            }
-
-            // Actualizar el estado del libro si no hay ejemplares disponibles
-            $nuevo_estado = ($ejemplares - 1 == 0) ? 'prestado' : 'disponible';
-            $sql_libro = "UPDATE libros SET estado = '$nuevo_estado' WHERE id_libro = $id_libro";
-            if (!$conn->query($sql_libro)) {
-                throw new Exception('Error al actualizar el estado del libro.');
+                throw new Exception('Error al actualizar el estado del ejemplar.');
             }
 
             // Confirmar la transacción
@@ -83,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -125,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
             <!-- Mostrar el nombre del libro y ejemplares disponibles -->
             <div class="mb-6 bg-white p-6 rounded-lg shadow-md">
                 <p class="text-lg"><strong>Libro a prestar:</strong> <?php echo $titulo_libro; ?></p>
-                <p class="text-lg"><strong>Ejemplares disponibles:</strong> <?php echo $ejemplares_disponibles; ?></p>
+                
             </div>
 
             <!-- Barra de búsqueda -->
@@ -173,6 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                                 echo "<p><strong>Fecha de Préstamo:</strong> " . htmlspecialchars($prestamo['fecha_prestamo']) . "</p>";
                             }
                         }
+                        
 
                         // Botón para prestar el libro
                         echo "<form action='prestamo_libros.php' method='POST' class='mt-4'>";
@@ -225,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                     echo "<td class='py-3 px-6'>" . $nombre_estudiante . "</td>";
                     echo "<td class='py-3 px-6'>" . htmlspecialchars($row['fecha_prestamo']) . "</td>";
                     echo "<td class='py-3 px-6 text-center'>";
-                    // Botón de Devolver
+                    // Botón de Devolver 
                     echo "<button onclick='confirmarDevolucion(" . intval($row['id_prestamo']) . ")' class='bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600'>Devolver</button>";
                     echo "</td>";
                     echo "</tr>";

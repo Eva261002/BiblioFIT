@@ -7,8 +7,14 @@ if (isset($_GET['search'])) {
     $search_query = $conn->real_escape_string($_GET['search']);
 }
 
-// Consulta actualizada
-$sql = "SELECT * FROM libros WHERE titulo LIKE '%$search_query%' OR autor LIKE '%$search_query%' OR categoria LIKE '%$search_query%'";
+// Consulta actualizada: ahora incluimos la tabla `ejemplares`
+$sql = "
+SELECT libros.id_libro, libros.titulo, libros.autor, libros.año_edicion, libros.pais, libros.categoria, 
+       ejemplares.id_ejemplar, ejemplares.n_inventario, ejemplares.estado
+FROM libros
+JOIN ejemplares ON libros.id_libro = ejemplares.id_libro
+WHERE titulo LIKE '%$search_query%' OR autor LIKE '%$search_query%' OR categoria LIKE '%$search_query%'
+";
 $result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
@@ -20,7 +26,6 @@ $result = $conn->query($sql);
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="scripts/catalogo_libros.js"></script>
-
 </head>
 <body class="bg-gray-100">
     <!-- Encabezado -->
@@ -42,9 +47,8 @@ $result = $conn->query($sql);
             </div>
         </nav>
     </header>
-    <div class="container mx-auto py-12">
-       
 
+    <div class="container mx-auto py-12">
         <h1 class="text-3xl font-bold text-center mb-6">Catálogo de Libros</h1>
 
         <!-- Filtro de Búsqueda -->
@@ -67,7 +71,7 @@ $result = $conn->query($sql);
                         <tr>
                             <th class="py-3 px-6 text-left">Título</th>
                             <th class="py-3 px-6 text-left">Autor</th>
-                            <th class="py-3 px-6 text-left">Ejemplar</th>
+                            <th class="py-3 px-6 text-left">Ejemplar (Inventario)</th>
                             <th class="py-3 px-6 text-left">Año de Edición</th>
                             <th class="py-3 px-6 text-left">País</th>
                             <th class="py-3 px-6 text-left">Categoría</th>
@@ -80,22 +84,29 @@ $result = $conn->query($sql);
                         <tr class="border-b border-gray-200 hover:bg-gray-100" id="libro-<?php echo intval($row['id_libro']); ?>">
                             <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['titulo']); ?></td>
                             <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['autor']); ?></td>
-                            <td class="py-3 px-6 text-left"><?php echo intval($row['ejemplar']); ?></td>
+                            <td class="py-3 px-6 text-left">
+                                <?php echo htmlspecialchars($row['n_inventario']); ?> <!-- Número de inventario único del ejemplar -->
+                            </td>
                             <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['año_edicion']); ?></td>
                             <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['pais']); ?></td>
                             <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['categoria']); ?></td>
-                            <td class="py-3 px-6 text-left" id="estado-<?php echo intval($row['id_libro']); ?>">
+                            <td class="py-3 px-6 text-left" id="estado-<?php echo intval($row['id_ejemplar']); ?>">
                                 <?php if($row['estado'] == 'disponible'): ?>
                                     <span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>
                                 <?php elseif($row['estado'] == 'prestado'): ?>
                                     <span class="bg-red-200 text-red-600 py-1 px-3 rounded-full text-xs">Prestado</span>
+                                <?php elseif($row['estado'] == 'dañado'): ?>
+                                    <span class="bg-yellow-200 text-yellow-600 py-1 px-3 rounded-full text-xs">Dañado</span>
+                                <?php elseif($row['estado'] == 'perdido'): ?>
+                                    <span class="bg-gray-200 text-gray-600 py-1 px-3 rounded-full text-xs">Perdido</span>
                                 <?php endif; ?>
                             </td>
 
-                            <td class="py-3 px-6 text-center">
-                                <!-- Botón de Prestar siempre visible -->
-                                <button onclick="confirmarPrestamo(<?php echo intval($row['id_libro']); ?>)" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</button>
-                            </td>
+
+<td class="py-3 px-6 text-center">
+    <a href="prestamo_libros.php?id_libro=<?php echo intval($row['id_libro']); ?>&id_ejemplar=<?php echo intval($row['id_ejemplar']); ?>" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</a>
+</td>
+
                         </tr>
                         <?php endwhile; ?>
                     </tbody>
