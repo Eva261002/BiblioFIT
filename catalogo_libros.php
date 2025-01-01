@@ -103,9 +103,9 @@ $result = $conn->query($sql);
                             </td>
 
 
-<td class="py-3 px-6 text-center">
-    <a href="prestamo_libros.php?id_libro=<?php echo intval($row['id_libro']); ?>&id_ejemplar=<?php echo intval($row['id_ejemplar']); ?>" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</a>
-</td>
+                            <td class="py-3 px-6 text-center">
+                                <a href="prestamo_libros.php?id_libro=<?php echo intval($row['id_libro']); ?>&id_ejemplar=<?php echo intval($row['id_ejemplar']); ?>" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</a>
+                            </td>
 
                         </tr>
                         <?php endwhile; ?>
