@@ -1,7 +1,7 @@
 <?php
 include('includes/db.php');
 require('fpdf/fpdf.php');
-
+include('includes/auth.php'); 
 // Inicializar variables
 $tipo_reporte = $_POST['tipo_reporte'] ?? '';
 $fecha_inicio = $_POST['fecha_inicio'] ?? '';

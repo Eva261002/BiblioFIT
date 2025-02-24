@@ -4,7 +4,7 @@ include('includes/db.php'); // Conexión a la base de datos
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     $password = $_POST['password'];
-
+ 
     // Buscar al usuario en la base de datos
     $query = "SELECT * FROM usuarios WHERE email = ?";
     $stmt = $conn->prepare($query);
@@ -23,10 +23,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             echo "Inicio de sesión exitoso. Redirigiendo...";
             header("Location: index.php");
         } else {
-            echo "Contraseña incorrecta.";
+            header("Location: login.php");
+              "Contraseña incorrecta.";
         }
     } else {
         echo "Usuario no encontrado.";
     }
+
+     
+    if (password_verify($password, $user['contraseña'])) {
+        session_start();
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['rol'] = $user['rol'];
+    
+        if ($user['rol'] === 'admin') {
+            header("Location: index.php");
+        } else {
+            header("Location: index.php");
+        }
+        exit;
+    }
+    
 }
 ?>

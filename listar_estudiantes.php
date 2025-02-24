@@ -1,6 +1,9 @@
 <?php
 include('includes/db.php');
+include('includes/auth.php');
 
+// Restringir acceso solo a administradores
+checkRole('admin');
 // Inicializar la variable de búsqueda
 $search = "";
 
