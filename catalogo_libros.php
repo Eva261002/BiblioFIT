@@ -9,15 +9,14 @@ if (isset($_GET['search'])) {
 
 // Consulta para obtener los recursos (libros, tesis, revistas, etc.)
 $sql = "
-    SELECT libros.id_libro, libros.titulo, libros.autor, libros.tipo_recurso, 
-           ejemplares.id_ejemplar, ejemplares.n_inventario, ejemplares.estado
+    SELECT libros.id_libro, libros.titulo, libros.autor, libros.año_edicion, libros.pais, libros.tipo_recurso, 
+           ejemplares.id_ejemplar, ejemplares.n_inventario, ejemplares.sig_topog, ejemplares.estado
     FROM libros
     JOIN ejemplares ON libros.id_libro = ejemplares.id_libro
     WHERE (libros.titulo LIKE '%$search_query%' OR libros.autor LIKE '%$search_query%' OR libros.tipo_recurso LIKE '%$search_query%')
 ";
 $result = $conn->query($sql);
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -78,41 +77,51 @@ $result = $conn->query($sql);
                         </tr>
                     </thead>
                     <tbody class="text-gray-600 text-sm font-light">
-    <?php if ($result->num_rows > 0): ?>
-        <?php while($row = $result->fetch_assoc()): ?>
-            <tr class="border-b border-gray-200 hover:bg-gray-100" id="libro-<?php echo intval($row['id_libro']); ?>">
-                <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['titulo']); ?></td>
-                <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['autor']); ?></td>
-                <td class="py-3 px-6 text-left">
-                    <?php echo htmlspecialchars($row['n_inventario']); ?> <!-- Número de inventario único del ejemplar -->
-                </td>
-                <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['tipo_recurso']); ?></td>
-                <td class="py-3 px-6 text-left" id="estado-<?php echo intval($row['id_ejemplar']); ?>">
-                    <?php if($row['estado'] == 'disponible'): ?>
-                        <span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>
-                    <?php elseif($row['estado'] == 'prestado'): ?>
-                        <span class="bg-red-200 text-red-600 py-1 px-3 rounded-full text-xs">Prestado</span>
-                    <?php elseif($row['estado'] == 'dañado'): ?>
-                        <span class="bg-yellow-200 text-yellow-600 py-1 px-3 rounded-full text-xs">Dañado</span>
-                    <?php elseif($row['estado'] == 'perdido'): ?>
-                        <span class="bg-gray-200 text-gray-600 py-1 px-3 rounded-full text-xs">Perdido</span>
-                    <?php endif; ?>
-                </td>
-                <td class="py-3 px-6 text-center">
-                    <?php if($row['estado'] == 'disponible'): ?>
-                        <a href="prestamo_libros.php?id_libro=<?php echo intval($row['id_libro']); ?>&id_ejemplar=<?php echo intval($row['id_ejemplar']); ?>" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</a>
-                    <?php else: ?>
-                        <span class="text-gray-500">No disponible</span>
-                    <?php endif; ?>
-                </td>
-            </tr>
-        <?php endwhile; ?>
-    <?php else: ?>
-        <tr>
-            <td colspan="6" class="py-3 px-6 text-center">No se encontraron recursos.</td>
-        </tr>
-    <?php endif; ?>
-</tbody>
+                        <?php if ($result->num_rows > 0): ?>
+                            <?php while($row = $result->fetch_assoc()): ?>
+                                <tr class="border-b border-gray-200 hover:bg-gray-100" id="libro-<?php echo intval($row['id_libro']); ?>">
+                                    <td class="py-3 px-6 text-left relative">
+                                        <?php echo htmlspecialchars($row['titulo']); ?>
+                                        <span class="info-icon cursor-pointer text-blue-500 hover:text-blue-700">ℹ️</span>
+                                        <!-- Tooltip -->
+                                        <div class="info-details absolute hidden bg-white border border-gray-200 shadow-lg rounded-lg p-4 z-50">
+                                            <p><strong>Nº Inventario:</strong> <?php echo htmlspecialchars($row['n_inventario']); ?></p>
+                                            <p><strong>Signatura Topográfica:</strong> <?php echo htmlspecialchars($row['sig_topog']); ?></p>
+                                            <p><strong>Año de Edición:</strong> <?php echo htmlspecialchars($row['año_edicion']); ?></p>
+                                            <p><strong>País:</strong> <?php echo htmlspecialchars($row['pais']); ?></p>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['autor']); ?></td>
+                                    <td class="py-3 px-6 text-left">
+                                        <?php echo htmlspecialchars($row['n_inventario']); ?>
+                                    </td>
+                                    <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['tipo_recurso']); ?></td>
+                                    <td class="py-3 px-6 text-left" id="estado-<?php echo intval($row['id_ejemplar']); ?>">
+                                        <?php if($row['estado'] == 'disponible'): ?>
+                                            <span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>
+                                        <?php elseif($row['estado'] == 'prestado'): ?>
+                                            <span class="bg-red-200 text-red-600 py-1 px-3 rounded-full text-xs">Prestado</span>
+                                        <?php elseif($row['estado'] == 'dañado'): ?>
+                                            <span class="bg-yellow-200 text-yellow-600 py-1 px-3 rounded-full text-xs">Dañado</span>
+                                        <?php elseif($row['estado'] == 'perdido'): ?>
+                                            <span class="bg-gray-200 text-gray-600 py-1 px-3 rounded-full text-xs">Perdido</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="py-3 px-6 text-center">
+                                        <?php if($row['estado'] == 'disponible'): ?>
+                                            <a href="prestamo_libros.php?id_libro=<?php echo intval($row['id_libro']); ?>&id_ejemplar=<?php echo intval($row['id_ejemplar']); ?>" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</a>
+                                        <?php else: ?>
+                                            <span class="text-gray-500">No disponible</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="6" class="py-3 px-6 text-center">No se encontraron recursos.</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
                 </table>
             </div>
         </div>
@@ -124,5 +133,28 @@ $result = $conn->query($sql);
             &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
         </div>
     </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Seleccionar todos los íconos de información
+            const infoIcons = document.querySelectorAll('.info-icon');
+
+            infoIcons.forEach(icon => {
+                icon.addEventListener('mouseenter', function () {
+                    // Mostrar el tooltip correspondiente
+                    const tooltip = this.nextElementSibling;
+                    tooltip.classList.remove('hidden');
+                    tooltip.classList.add('block');
+                });
+
+                icon.addEventListener('mouseleave', function () {
+                    // Ocultar el tooltip
+                    const tooltip = this.nextElementSibling;
+                    tooltip.classList.remove('block');
+                    tooltip.classList.add('hidden');
+                });
+            });
+        });
+    </script>
 </body>
 </html>
