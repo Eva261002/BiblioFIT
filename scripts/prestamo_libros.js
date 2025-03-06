@@ -1,41 +1,37 @@
 function confirmarDevolucion(id_prestamo) {
-    if (confirm('¿Estás seguro de que deseas devolver este libro?')) {
-        devolverLibro(id_prestamo);
-    }
-}
+    console.log("Función confirmarDevolucion llamada con ID:", id_prestamo);
+    
+    // Mostrar el formulario de devolución
+    $('#formulario-devolucion').removeClass('hidden').show();
+    
+    // Establecer el valor del campo oculto con el ID del préstamo
+    $('#id_prestamo').val(id_prestamo);
 
-function devolverLibro(id_prestamo) {
-    // Seleccionar la fila correspondiente al préstamo activo
-    var filaPrestamo = $('#prestamo-' + id_prestamo);
+    // Eliminar cualquier evento anterior para evitar duplicaciones
+    $('#form-devolver').off('submit').on('submit', function(e) {
+        e.preventDefault();
 
-    // Seleccionar el botón de Devolver y deshabilitarlo para prevenir múltiples clics
-    var button = filaPrestamo.find('button');
-    button.prop('disabled', true);
-    button.text('Devolviendo...');
+        // Obtener los datos del formulario
+        var formData = $(this).serialize() + '&accion=devolver';
 
-    $.ajax({
-        url: 'devolver_libro.php',
-        type: 'POST',
-        data: { id_prestamo: id_prestamo, accion: 'devolver' },
-        success: function(response) {
-            if (response.trim() === 'success') {
-                // Remover la fila del préstamo devuelto
-                filaPrestamo.fadeOut(500, function() {
-                    $(this).remove();
-                });
-            } else {
-                // Mostrar el mensaje de error detallado para depuración
-                alert('Error al devolver el libro: ' + response);
-                // Rehabilitar el botón de Devolver en caso de error
-                button.prop('disabled', false);
-                button.text('Devolver');
+        // Enviar la solicitud AJAX
+        $.ajax({
+            url: 'devolver_libro.php', // Asegúrate de que esta URL sea correcta
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.trim() === 'success') {
+                    // Ocultar el formulario
+                    $('#formulario-devolucion').addClass('hidden');
+                    // Recargar la página para actualizar la lista de préstamos
+                    location.reload();
+                } else {
+                    alert('Error al devolver el libro: ' + response);
+                }
+            },
+            error: function() {
+                alert('Error al devolver el libro.');
             }
-        },
-        error: function() {
-            alert('Error al devolver el libro.');
-            // Rehabilitar el botón de Devolver en caso de error
-            button.prop('disabled', false);
-            button.text('Devolver');
-        }
+        });
     });
 }

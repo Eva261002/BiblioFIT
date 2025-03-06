@@ -7,22 +7,23 @@ if (isset($_GET['search'])) {
     $search_query = $conn->real_escape_string($_GET['search']);
 }
 
-// Consulta actualizada: ahora incluimos la tabla `ejemplares`
+// Consulta para obtener los recursos (libros, tesis, revistas, etc.)
 $sql = "
-SELECT libros.id_libro, libros.titulo, libros.autor, libros.año_edicion, libros.pais, libros.categoria, 
-       ejemplares.id_ejemplar, ejemplares.n_inventario, ejemplares.estado
-FROM libros
-JOIN ejemplares ON libros.id_libro = ejemplares.id_libro
-WHERE titulo LIKE '%$search_query%' OR autor LIKE '%$search_query%' OR categoria LIKE '%$search_query%'
+    SELECT libros.id_libro, libros.titulo, libros.autor, libros.tipo_recurso, 
+           ejemplares.id_ejemplar, ejemplares.n_inventario, ejemplares.estado
+    FROM libros
+    JOIN ejemplares ON libros.id_libro = ejemplares.id_libro
+    WHERE (libros.titulo LIKE '%$search_query%' OR libros.autor LIKE '%$search_query%' OR libros.tipo_recurso LIKE '%$search_query%')
 ";
 $result = $conn->query($sql);
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catálogo de Libros</title>
+    <title>Catálogo de Recursos</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="scripts/catalogo_libros.js"></script>
@@ -34,7 +35,6 @@ $result = $conn->query($sql);
             <div class="flex items-center">
                 <!-- Icono de Biblioteca -->
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <!-- Contenido del SVG -->
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0H7a1 1 0 01-1-1v-2" />
                 </svg>
                 <a href="index.php" class="text-white text-2xl font-bold">Sistema de Biblioteca</a>
@@ -49,7 +49,7 @@ $result = $conn->query($sql);
     </header>
 
     <div class="container mx-auto py-12">
-        <h1 class="text-3xl font-bold text-center mb-6">Catálogo de Libros</h1>
+        <h1 class="text-3xl font-bold text-center mb-6">Catálogo de Recursos</h1>
 
         <!-- Filtro de Búsqueda -->
         <form action="catalogo_libros.php" method="GET" class="mb-6">
@@ -59,8 +59,8 @@ $result = $conn->query($sql);
 
         <!-- Botones de acción -->
         <div class="flex justify-end mb-6">
-            <a href="registro_libros.php" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 mr-4">Agregar Libro</a>
-            <a href="prestamo_libros.php" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600">Ver Libros Prestados</a>
+            <a href="registro_recursos.php" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 mr-4">Agregar Recurso</a>
+            <a href="prestamo_libros.php" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600">Ver Recursos Prestados</a>
         </div>
 
         <!-- Tabla de Catálogo -->
@@ -72,54 +72,57 @@ $result = $conn->query($sql);
                             <th class="py-3 px-6 text-left">Título</th>
                             <th class="py-3 px-6 text-left">Autor</th>
                             <th class="py-3 px-6 text-left">Ejemplar (Inventario)</th>
-                            <th class="py-3 px-6 text-left">Año de Edición</th>
-                            <th class="py-3 px-6 text-left">País</th>
                             <th class="py-3 px-6 text-left">Categoría</th>
                             <th class="py-3 px-6 text-left">Estado</th>
                             <th class="py-3 px-6 text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="text-gray-600 text-sm font-light">
-                        <?php while($row = $result->fetch_assoc()): ?>
-                        <tr class="border-b border-gray-200 hover:bg-gray-100" id="libro-<?php echo intval($row['id_libro']); ?>">
-                            <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['titulo']); ?></td>
-                            <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['autor']); ?></td>
-                            <td class="py-3 px-6 text-left">
-                                <?php echo htmlspecialchars($row['n_inventario']); ?> <!-- Número de inventario único del ejemplar -->
-                            </td>
-                            <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['año_edicion']); ?></td>
-                            <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['pais']); ?></td>
-                            <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['categoria']); ?></td>
-                            <td class="py-3 px-6 text-left" id="estado-<?php echo intval($row['id_ejemplar']); ?>">
-                                <?php if($row['estado'] == 'disponible'): ?>
-                                    <span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>
-                                <?php elseif($row['estado'] == 'prestado'): ?>
-                                    <span class="bg-red-200 text-red-600 py-1 px-3 rounded-full text-xs">Prestado</span>
-                                <?php elseif($row['estado'] == 'dañado'): ?>
-                                    <span class="bg-yellow-200 text-yellow-600 py-1 px-3 rounded-full text-xs">Dañado</span>
-                                <?php elseif($row['estado'] == 'perdido'): ?>
-                                    <span class="bg-gray-200 text-gray-600 py-1 px-3 rounded-full text-xs">Perdido</span>
-                                <?php endif; ?>
-                            </td>
-
-
-                            <td class="py-3 px-6 text-center">
-                                <a href="prestamo_libros.php?id_libro=<?php echo intval($row['id_libro']); ?>&id_ejemplar=<?php echo intval($row['id_ejemplar']); ?>" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</a>
-                            </td>
-
-                        </tr>
-                        <?php endwhile; ?>
-                    </tbody>
+    <?php if ($result->num_rows > 0): ?>
+        <?php while($row = $result->fetch_assoc()): ?>
+            <tr class="border-b border-gray-200 hover:bg-gray-100" id="libro-<?php echo intval($row['id_libro']); ?>">
+                <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['titulo']); ?></td>
+                <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['autor']); ?></td>
+                <td class="py-3 px-6 text-left">
+                    <?php echo htmlspecialchars($row['n_inventario']); ?> <!-- Número de inventario único del ejemplar -->
+                </td>
+                <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['tipo_recurso']); ?></td>
+                <td class="py-3 px-6 text-left" id="estado-<?php echo intval($row['id_ejemplar']); ?>">
+                    <?php if($row['estado'] == 'disponible'): ?>
+                        <span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>
+                    <?php elseif($row['estado'] == 'prestado'): ?>
+                        <span class="bg-red-200 text-red-600 py-1 px-3 rounded-full text-xs">Prestado</span>
+                    <?php elseif($row['estado'] == 'dañado'): ?>
+                        <span class="bg-yellow-200 text-yellow-600 py-1 px-3 rounded-full text-xs">Dañado</span>
+                    <?php elseif($row['estado'] == 'perdido'): ?>
+                        <span class="bg-gray-200 text-gray-600 py-1 px-3 rounded-full text-xs">Perdido</span>
+                    <?php endif; ?>
+                </td>
+                <td class="py-3 px-6 text-center">
+                    <?php if($row['estado'] == 'disponible'): ?>
+                        <a href="prestamo_libros.php?id_libro=<?php echo intval($row['id_libro']); ?>&id_ejemplar=<?php echo intval($row['id_ejemplar']); ?>" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</a>
+                    <?php else: ?>
+                        <span class="text-gray-500">No disponible</span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <tr>
+            <td colspan="6" class="py-3 px-6 text-center">No se encontraron recursos.</td>
+        </tr>
+    <?php endif; ?>
+</tbody>
                 </table>
             </div>
         </div>
     </div>
- <!-- Pie de Página -->
- <footer class="bg-gray-800 text-white py-6">
+
+    <!-- Pie de Página -->
+    <footer class="bg-gray-800 text-white py-6">
         <div class="container mx-auto text-center">
             &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
         </div>
     </footer>
-    
 </body>
 </html>

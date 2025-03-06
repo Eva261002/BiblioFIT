@@ -3,82 +3,137 @@ include('includes/db.php');
 
 date_default_timezone_set('America/La_Paz');
 
-// Mostrar errores detallados solo durante el desarrollo
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_prestamo']) && $_POST['accion'] === 'devolver') {
+// Verificar si se ha enviado el formulario
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'devolver') {
     $id_prestamo = intval($_POST['id_prestamo']);
+    $recibido_por = isset($_POST['recibido_por']) ? $conn->real_escape_string($_POST['recibido_por']) : '';
+    $estado_recurso = isset($_POST['estado_recurso']) ? $conn->real_escape_string($_POST['estado_recurso']) : '';
+
+    // Validar que los campos no estén vacíos
+    if (empty($recibido_por) || empty($estado_recurso)) {
+        echo 'error: Todos los campos son obligatorios.';
+        exit();
+    }
+
+    // Validar que el estado del recurso sea uno de los permitidos
+    $estados_permitidos = ['bueno', 'dañado', 'perdido'];
+    if (!in_array($estado_recurso, $estados_permitidos)) {
+        echo 'error: Estado del recurso no válido.';
+        exit();
+    }
 
     $conn->begin_transaction();
     try {
-        // 1. Obtener el préstamo activo y el id_libro asociado
-        $stmt_prestamo = $conn->prepare("SELECT id_libro FROM prestamo WHERE id_prestamo = ? AND fecha_devolucion IS NULL");
-        if (!$stmt_prestamo) {
-            throw new Exception('Error al preparar la consulta de préstamo: ' . $conn->error);
-        }
-        $stmt_prestamo->bind_param("i", $id_prestamo);
-        $stmt_prestamo->execute();
-        $result_prestamo = $stmt_prestamo->get_result();
+        // 1. Obtener el id_ejemplar del préstamo
+        $sql_prestamo = "SELECT id_ejemplar FROM prestamo WHERE id_prestamo = $id_prestamo";
+        $result_prestamo = $conn->query($sql_prestamo);
 
         if ($result_prestamo->num_rows === 0) {
-            throw new Exception('Préstamo no encontrado o ya devuelto.');
+            throw new Exception('Préstamo no encontrado.');
         }
 
         $prestamo = $result_prestamo->fetch_assoc();
-        $id_libro = intval($prestamo['id_libro']);
+        $id_ejemplar = intval($prestamo['id_ejemplar']);
 
-        // 2. Encontrar un ejemplar específico que está prestado para este préstamo
-        $stmt_ejemplar = $conn->prepare("SELECT id_ejemplar FROM ejemplares WHERE id_libro = ? AND estado = 'prestado' LIMIT 1");
-        if (!$stmt_ejemplar) {
-            throw new Exception('Error al preparar la consulta de ejemplares: ' . $conn->error);
-        }
-        $stmt_ejemplar->bind_param("i", $id_libro);
-        $stmt_ejemplar->execute();
-        $result_ejemplar = $stmt_ejemplar->get_result();
-
-        if ($result_ejemplar->num_rows === 0) {
-            throw new Exception('No se encontró un ejemplar prestado para este libro.');
+        // 2. Insertar la devolución en la tabla `devoluciones`
+        $sql_devolucion = "INSERT INTO devoluciones (id_prestamo, recibido_por, estado_recurso) 
+                           VALUES ($id_prestamo, '$recibido_por', '$estado_recurso')";
+        if (!$conn->query($sql_devolucion)) {
+            throw new Exception('Error al registrar la devolución.');
         }
 
-        $ejemplar = $result_ejemplar->fetch_assoc();
-        $id_ejemplar = intval($ejemplar['id_ejemplar']);
-
-        // 3. Actualizar el estado del ejemplar a "disponible"
-        $stmt_actualizar_ejemplar = $conn->prepare("UPDATE ejemplares SET estado = 'disponible' WHERE id_ejemplar = ?");
-        if (!$stmt_actualizar_ejemplar) {
-            throw new Exception('Error al preparar la actualización del ejemplar: ' . $conn->error);
+        // 3. Actualizar el estado del ejemplar según el estado del recurso
+        $nuevo_estado = ($estado_recurso === 'bueno') ? 'disponible' : $estado_recurso;
+        $sql_update_ejemplar = "UPDATE ejemplares SET estado = '$nuevo_estado' WHERE id_ejemplar = $id_ejemplar";
+        if (!$conn->query($sql_update_ejemplar)) {
+            throw new Exception('Error al actualizar el estado del ejemplar.');
         }
-        $stmt_actualizar_ejemplar->bind_param("i", $id_ejemplar);
-        $stmt_actualizar_ejemplar->execute();
 
-        // 4. Marcar la fecha de devolución y actualizar el estado del préstamo a "devuelto"
-        $fecha_devolucion = date('Y-m-d H:i:s');
-        $stmt_devolucion = $conn->prepare("UPDATE prestamo SET fecha_devolucion = ?, estado = 'devuelto' WHERE id_prestamo = ?");
-        if (!$stmt_devolucion) {
-            throw new Exception('Error al preparar la actualización de devolución: ' . $conn->error);
+        // 4. Marcar el préstamo como devuelto
+        $sql_update_prestamo = "UPDATE prestamo SET estado = 'devuelto', fecha_devolucion = NOW() WHERE id_prestamo = $id_prestamo";
+        if (!$conn->query($sql_update_prestamo)) {
+            throw new Exception('Error al actualizar el préstamo.');
         }
-        $stmt_devolucion->bind_param("si", $fecha_devolucion, $id_prestamo);
-        $stmt_devolucion->execute();
 
         // Confirmar la transacción
         $conn->commit();
-        echo 'success';
+        
+        // Redirigir de vuelta a prestamo_libros.php
+        header('Location: prestamo_libros.php');
+        exit();
     } catch (Exception $e) {
         $conn->rollback();
         echo 'error: ' . htmlspecialchars($e->getMessage());
     }
-
-    // Cerrar los statements si están definidos
-    if (isset($stmt_prestamo) && $stmt_prestamo !== null) $stmt_prestamo->close();
-    if (isset($stmt_ejemplar) && $stmt_ejemplar !== null) $stmt_ejemplar->close();
-    if (isset($stmt_actualizar_ejemplar) && $stmt_actualizar_ejemplar !== null) $stmt_actualizar_ejemplar->close();
-    if (isset($stmt_devolucion) && $stmt_devolucion !== null) $stmt_devolucion->close();
 } else {
-    echo 'error: Parámetros incorrectos.';
-}
+    // Mostrar el formulario de devolución
+    $id_prestamo = isset($_GET['id_prestamo']) ? intval($_GET['id_prestamo']) : null;
 
-// Cerrar la conexión
+    if ($id_prestamo === null) {
+        echo 'error: ID de préstamo no proporcionado.';
+        exit();
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devolver Libro - Sistema de Biblioteca</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex flex-col min-h-screen">
+    <!-- Encabezado -->
+    <header class="bg-blue-600 shadow">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <!-- Icono de Biblioteca -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0H7a1 1 0 01-1-1v-2" />
+                </svg>
+                <a href="index.php" class="text-white text-2xl font-bold">Sistema de Biblioteca</a>
+            </div>
+            <div>
+                <a href="index.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Inicio</a>
+                <a href="catalogo_libros.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Catálogo</a>
+                <a href="reportes.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Reportes</a>
+                <a href="listar_estudiantes.php" class="bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-800 transition">Estudiantes</a>
+            </div>
+        </nav>
+    </header>
+    <main class="container mx-auto px-6 py-12 flex-grow">
+        <h1 class="text-3xl font-bold text-center mb-6">Devolver Libro</h1>
+
+        <form action="devolver_libro.php" method="POST" class="bg-white p-6 rounded-lg shadow-md">
+            <input type="hidden" name="id_prestamo" value="<?php echo $id_prestamo; ?>">
+            <input type="hidden" name="accion" value="devolver">
+            <div class="mb-4">
+                <label for="recibido_por" class="block text-sm font-medium text-gray-700">Recibido por:</label>
+                <input type="text" name="recibido_por" id="recibido_por" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md">
+            </div>
+            <div class="mb-4">
+                <label for="estado_recurso" class="block text-sm font-medium text-gray-700">Estado del Recurso:</label>
+                <select name="estado_recurso" id="estado_recurso" required class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md">
+                    <option value="bueno">Bueno</option>
+                    <option value="dañado">Dañado</option> 
+                    <option value="perdido">Perdido</option>
+                </select>
+            </div>
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Confirmar Devolución</button>
+        </form>
+    </main>
+
+    <!-- Pie de Página -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto text-center">
+            &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
+        </div>
+    </footer>
+</body>
+</html>
+
+<?php
 $conn->close();
 ?>
