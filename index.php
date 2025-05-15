@@ -43,7 +43,7 @@ if (!isset($_SESSION['user_id'])) {
             <!-- Menú de navegación  -->
             <div>
                 <a href="#" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Inicio</a>
-                <a href="catalogo_libros.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Catálogo</a>
+                
                 <a href="reportes.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Reportes</a>
                 <a href="listar_estudiantes.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Estudiantes</a>
                 <a href="logout.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Cerrar Sesión</a>

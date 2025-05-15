@@ -1,6 +1,9 @@
 <?php
 include('includes/db.php');
+//Nota: preguntar si agrego quien presta, solo estudiantes u otro particular
 
+
+//2tienes que agregar el cambio de deep
 date_default_timezone_set('America/La_Paz');
 
 // Determinar el modo de la página (prestar o devolver)
@@ -39,7 +42,7 @@ if ($modo === 'prestar' && $id_libro !== null && $id_ejemplar !== null) {
             exit();
         }
     } else {
-        echo "<div class='bg-red-200 text-red-700 p-4 rounded'>Error: Libro no encontrado.</div>";
+        echo "<div class='bg-red-200 text-red-700 p-4 rounded'>Error: Rcurso no encontrado.</div>";
         exit();
     }
 }
@@ -49,6 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     $accion = $_POST['accion'];
     $id_ejemplar = isset($_POST['id_ejemplar']) ? intval($_POST['id_ejemplar']) : null;
     $id_estudiante = isset($_POST['id_estudiante']) ? intval($_POST['id_estudiante']) : null;
+    $lugar = isset($_POST['lugar']) ? $_POST['lugar'] : 'domicilio'; // Nuevo campo
+
+    // Validar que el lugar sea uno de los permitidos
+    $lugaresPermitidos = ['sala', 'domicilio', 'fotocopia'];
+    if (!in_array($lugar, $lugaresPermitidos)) {
+        echo "<div class='bg-red-200 text-red-700 p-4 rounded'>Error: Lugar de préstamo no válido.</div>";
+        exit();
+    }
 
     if ($accion === 'prestar' && $id_ejemplar !== null && $id_estudiante !== null) {
         $fecha_prestamo = date('Y-m-d H:i:s');
@@ -60,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
             $result_prestamo = $conn->query($sql_check_prestamo);
 
             if ($result_prestamo->num_rows > 0) {
-                throw new Exception('El estudiante ya tiene un libro prestado.');
+                throw new Exception('El estudiante ya tiene un recurso prestado.');
             }
 
             // 2. Verificar si el ejemplar está disponible
@@ -74,29 +85,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
             $ejemplar = $result_ejemplar->fetch_assoc();
             $estado_ejemplar = $ejemplar['estado'];
 
-            // Verificar si el ejemplar está disponible
             if ($estado_ejemplar !== 'disponible') {
                 throw new Exception('El ejemplar no está disponible para prestar.');
             }
 
-            // 3. Insertar el préstamo en la tabla `prestamo`
-            $sql_prestamo = "INSERT INTO prestamo (id_ejemplar, id_estudiante, fecha_prestamo, estado) 
-                            VALUES ($id_ejemplar, $id_estudiante, '$fecha_prestamo', 'en curso')";
+            // 3. Insertar el préstamo con el campo LUGAR
+            $sql_prestamo = "INSERT INTO prestamo (id_ejemplar, id_estudiante, fecha_prestamo, estado, lugar) 
+                            VALUES ($id_ejemplar, $id_estudiante, '$fecha_prestamo', 'en curso', '$lugar')";
             if (!$conn->query($sql_prestamo)) {
                 throw new Exception('Error al registrar el préstamo.');
             }
 
-            // 4. Actualizar el estado del ejemplar a "prestado"
+            // 4. Actualizar el estado del ejemplar
             $sql_update_ejemplar = "UPDATE ejemplares SET estado = 'prestado' WHERE id_ejemplar = $id_ejemplar";
             if (!$conn->query($sql_update_ejemplar)) {
                 throw new Exception('Error al actualizar el estado del ejemplar.');
             }
 
-            // Confirmar la transacción
             $conn->commit();
-
-            // Redirigir al catálogo o a la página de préstamos
-            header('Location: catalogo_libros.php');
+            header('Location: catalogo_libros.php?prestamo=exitoso');
             exit();
         } catch (Exception $e) {
             $conn->rollback();
@@ -199,8 +206,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                             echo "<input type='hidden' name='id_ejemplar' value='$id_ejemplar'>";
                             echo "<input type='hidden' name='id_estudiante' value='" . intval($row['id_estudiante']) . "'>";
                             echo "<input type='hidden' name='accion' value='prestar'>";
+// Reemplaza el botón de préstamo actual con este:
                             if (!$has_prestamo) {
-                                echo "<button type='submit' class='bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors'>Prestar</button>";
+                                echo "<button type='button' onclick='mostrarModalPrestamo(" . intval($row['id_estudiante']) . ")' 
+                                    class='bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors'>
+                                    Prestar
+                                    </button>";
                             } else {
                                 echo "<button type='button' class='bg-gray-500 text-white px-4 py-2 rounded-md cursor-not-allowed' disabled>No puede Prestar</button>";
                             }
@@ -216,11 +227,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
 
             <!-- Sección de Libros Actualmente Prestados -->
             <div class="mt-12">
-                <h2 class="text-2xl font-bold text-center mb-6">Libros Actualmente Prestados</h2>
+                <h2 class="text-2xl font-bold text-center mb-6">Recursos Actualmente Prestados</h2>
                 <?php
                 // Consulta para obtener los libros actualmente prestados
                 $sql_prestados = "
-                SELECT p.id_prestamo, l.titulo, e.nombre, e.apellido_paterno, e.apellido_materno, p.fecha_prestamo
+                SELECT p.id_prestamo, l.titulo, e.nombre, e.apellido_paterno, e.apellido_materno, p.fecha_prestamo, p.lugar
                 FROM prestamo p
                 JOIN ejemplares ej ON p.id_ejemplar = ej.id_ejemplar
                 JOIN libros l ON ej.id_libro = l.id_libro
@@ -235,16 +246,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                     echo "<tr>";
                     echo "<th class='py-3 px-6 text-left'>Título</th>";
                     echo "<th class='py-3 px-6 text-left'>Estudiante</th>";
+                    echo "<th class='py-3 px-6 text-left'>Lugar</th>";
                     echo "<th class='py-3 px-6 text-left'>Fecha de Préstamo</th>";
                     echo "<th class='py-3 px-6 text-center'>Acciones</th>";
                     echo "</tr>";
                     echo "</thead>";
                     echo "<tbody class='text-gray-600 text-sm font-light'>";
+                    
                     while ($row = $result_prestados->fetch_assoc()) {
                         $nombre_estudiante = htmlspecialchars($row['nombre'] . ' ' . $row['apellido_paterno'] . ' ' . $row['apellido_materno']);
                         echo "<tr class='border-b border-gray-200 hover:bg-gray-100' id='prestamo-" . intval($row['id_prestamo']) . "'>";
                         echo "<td class='py-3 px-6'>" . htmlspecialchars($row['titulo']) . "</td>";
                         echo "<td class='py-3 px-6'>" . $nombre_estudiante . "</td>";
+                        echo "<td class='py-3 px-6'>" . htmlspecialchars($row['lugar']) . "</td>";
                         echo "<td class='py-3 px-6'>" . htmlspecialchars($row['fecha_prestamo']) . "</td>";
                         echo "<td class='py-3 px-6 text-center'>";
                         // Botón de Devolver
@@ -252,15 +266,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
                         echo "</td>";
                         echo "</tr>";
                     }
+                    
                     echo "</tbody>";
                     echo "</table>";
                     echo "</div>";
-                    
                 } else {
                     echo "<p class='text-center text-gray-500'>No hay libros actualmente prestados.</p>";
                 }
                 ?>
-            </div>
+            </div>    
 
         </main>
 
@@ -271,6 +285,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
             </div>
         </footer>
     </body>
+<!-- Modal para seleccionar el lugar -->
+<div id="modalPrestamo" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h3 class="text-xl font-bold mb-4">Seleccione el lugar de préstamo</h3>
+        <form id="formPrestamo" action="prestamo_libros.php" method="POST">
+            <input type="hidden" name="id_libro" id="modalIdLibro" value="<?php echo $id_libro; ?>">
+            <input type="hidden" name="id_ejemplar" id="modalIdEjemplar" value="<?php echo $id_ejemplar; ?>">
+            <input type="hidden" name="id_estudiante" id="modalIdEstudiante">
+            <input type="hidden" name="accion" value="prestar">
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Lugar:</label>
+                <select name="lugar" class="w-full px-4 py-2 border rounded-md" required>
+                    <option value="sala">Sala de lectura</option>
+                    <option value="domicilio">Domicilio</option> 
+                    <option value="fotocopia">Fotocopia</option>
+                </select>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button type="button" onclick="cerrarModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+                    Cancelar
+                </button>
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                    Confirmar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Script para manejar el modal -->
+<script>
+    function mostrarModalPrestamo(idEstudiante) {
+        document.getElementById('modalIdEstudiante').value = idEstudiante;
+        document.getElementById('modalPrestamo').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalPrestamo').classList.add('hidden');
+    }
+</script>
+
+
     </html>
 
     <?php

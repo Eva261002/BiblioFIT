@@ -6,7 +6,7 @@ $search_query = '';
 if (isset($_GET['search'])) {
     $search_query = $conn->real_escape_string($_GET['search']);
 }
-
+ 
 // Consulta para obtener los recursos (libros, tesis, revistas, etc.)
 $sql = "
     SELECT libros.id_libro, libros.titulo, libros.autor, libros.año_edicion, libros.pais, libros.tipo_recurso, 
