@@ -1,96 +1,332 @@
 <?php
 require('fpdf/fpdf.php');
-include('includes/db.php'); // Incluye la conexión a la base de datos
+include('includes/db.php');
+include('includes/auth.php');
 
-// Recibir los datos del formulario de reportes
-$tipo_reporte = $_POST['tipo_reporte'] ?? '';
-$fecha_inicio = $_POST['fecha_inicio'] ?? '';
-$fecha_fin = $_POST['fecha_fin'] ?? '';
+// Verificar si se envió el formulario
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: reportes.php');
+    exit;
+}
 
-// Crear el objeto PDF
+// Validar parámetros
+if (!isset($_POST['tipo_reporte']) || !isset($_POST['fecha_inicio']) || !isset($_POST['fecha_fin'])) {
+    die('Parámetros incompletos');
+}
+
+$tipo_reporte = $_POST['tipo_reporte'];
+$fecha_inicio = $_POST['fecha_inicio'];
+$fecha_fin = $_POST['fecha_fin'] . ' 23:59:59';
+
+// Crear PDF en orientación vertical para mejor flujo de lectura
 $pdf = new FPDF();
 $pdf->AddPage();
-$pdf->SetFont('Arial','B',16);
+$pdf->SetFont('Arial', 'B', 16);
 
-// Título del reporte
-$pdf->Cell(0,10, iconv('UTF-8', 'ISO-8859-1', 'Reporte de Asistencia por Carrera'), 0, 1, 'C');
+// Función para convertir texto
+function textoPDF($texto) {
+    return iconv('UTF-8', 'ISO-8859-1', $texto);
+}
 
-// Verificar el tipo de reporte
-if ($tipo_reporte == 'asistencia' && $fecha_inicio && $fecha_fin) {
-    // Consulta preparada para el resumen por carrera
-    $stmt_resumen = $conn->prepare("SELECT e.carrera, 
-                                         COUNT(*) AS total_asistencia, 
-                                         DATE_FORMAT(SEC_TO_TIME(AVG(TIMESTAMPDIFF(SECOND, es.hora_entrada, es.hora_salida))), '%H:%i') AS tiempo_promedio 
-                                  FROM entradas_salidas es
-                                  JOIN estudiantes e ON es.id_estudiante = e.id_estudiante
-                                  WHERE es.hora_entrada BETWEEN ? AND ?
-                                  GROUP BY e.carrera");
-    
-    $stmt_resumen->bind_param("ss", $fecha_inicio, $fecha_fin);
-    $stmt_resumen->execute();
-    $resultado_resumen = $stmt_resumen->get_result();
-    $stmt_resumen->close();
-    
-    if ($resultado_resumen && $resultado_resumen->num_rows > 0) {
-        // Tabla Resumen
-        $pdf->SetFont('Arial','B',12);
-        $pdf->Cell(60,10, iconv('UTF-8', 'ISO-8859-1', 'Carrera'), 1, 0, 'C');
-        $pdf->Cell(60,10, 'Tiempo Promedio', 1, 0, 'C');
-        $pdf->Cell(60,10, 'Total Asistencias', 1, 1, 'C');
+// Título del reporte 
+$titulos = [
+    'asistencia' => 'Reporte Detallado de Asistencia',
+    'prestamos' => 'Reporte Detallado de Prestamos',
+    'libros' => 'Reporte Detallado de Libros Prestados'
+];
+
+$pdf->Cell(0, 10, textoPDF($titulos[$tipo_reporte] ?? 'Reporte'), 0, 1, 'C');
+$pdf->SetFont('Arial', '', 12);
+$pdf->Cell(0, 10, textoPDF('Periodo: ' . date('d/m/Y', strtotime($fecha_inicio)) . ' - ' . date('d/m/Y', strtotime($_POST['fecha_fin']))), 0, 1, 'C');
+$pdf->Ln(10);
+
+// Procesar según tipo de reporte
+switch($tipo_reporte) {
+    case 'asistencia':
+        generarReporteAsistencia($pdf, $conn, $fecha_inicio, $fecha_fin);
+        break;
         
-        $pdf->SetFont('Arial','',12);
-        while ($row = $resultado_resumen->fetch_assoc()) {
-            $pdf->Cell(60,10, iconv('UTF-8', 'ISO-8859-1', $row['carrera']), 1);
-            $pdf->Cell(60,10, $row['tiempo_promedio'], 1);
-            $pdf->Cell(60,10, $row['total_asistencia'], 1, 1);
-        }
-    } else {
-        $pdf->SetFont('Arial','I',12);
-        $pdf->Cell(0,10, 'No se encontraron resultados para el rango de fechas seleccionado.', 0, 1, 'C');
+    case 'prestamos':
+        generarReportePrestamos($pdf, $conn, $fecha_inicio, $fecha_fin);
+        break;
+        
+    case 'libros':
+        generarReporteLibros($pdf, $conn, $fecha_inicio, $fecha_fin);
+        break;
+        
+    default:
+        $pdf->Cell(0, 10, textoPDF('Tipo de reporte no válido'), 0, 1);
+}
+
+// Pie de página
+$pdf->SetY(-15);
+$pdf->SetFont('Arial', 'I', 8);
+$pdf->Cell(0, 10, textoPDF('Generado el ' . date('d/m/Y H:i')), 0, 0, 'C');
+
+// Salida del PDF
+$pdf->Output('I', 'Reporte_Detallado_' . $tipo_reporte . '_' . date('Ymd') . '.pdf');
+
+// FUNCIONES PARA GENERAR REPORTES DETALLADOS
+
+function generarReporteAsistencia($pdf, $conn, $fecha_inicio, $fecha_fin) {
+    // 1. Resumen por carrera
+    $pdf->SetFont('Arial', 'B', 14);
+    $pdf->Cell(0, 10, textoPDF('Resumen por Carrera'), 0, 1);
+    $pdf->Ln(5);
+    
+    $query_resumen = "SELECT e.carrera, COUNT(*) as visitas 
+                     FROM entradas_salidas es
+                     JOIN estudiantes e ON es.id_estudiante = e.id_estudiante
+                     WHERE es.hora_entrada BETWEEN ? AND ?
+                     GROUP BY e.carrera
+                     ORDER BY visitas DESC";
+    
+    $stmt = $conn->prepare($query_resumen);
+    $stmt->bind_param("ss", $fecha_inicio, $fecha_fin);
+    $stmt->execute();
+    $resumen = $stmt->get_result();
+    
+    // Tabla de resumen
+    $pdf->SetFont('Arial', 'B', 12);
+    $pdf->Cell(100, 8, textoPDF('Carrera'), 1);
+    $pdf->Cell(30, 8, 'Visitas', 1, 1);
+    
+    $pdf->SetFont('Arial', '', 10);
+    while ($row = $resumen->fetch_assoc()) {
+        $pdf->Cell(100, 7, textoPDF($row['carrera']), 1);
+        $pdf->Cell(30, 7, $row['visitas'], 1, 1, 'C');
     }
     
-    // Espacio antes de la tabla detallada
-    $pdf->Ln(10);
+    $pdf->Ln(15);
     
-    // Título de la tabla detallada
-    $pdf->SetFont('Arial','B',14);
-    $pdf->Cell(0,10, iconv('UTF-8', 'ISO-8859-1', 'Detalle por Carrera y Estudiante'), 0, 1, 'C');
+    // 2. Detalle por estudiante
+    $pdf->SetFont('Arial', 'B', 14);
+    $pdf->Cell(0, 10, textoPDF('Detalle por Estudiante'), 0, 1);
+    $pdf->Ln(5);
     
-    // Consulta preparada para los datos detallados por estudiante
-    $stmt_detalle = $conn->prepare("SELECT e.carrera, e.nombre, e.apellido_paterno, 
-                                           SEC_TO_TIME(TIMESTAMPDIFF(SECOND, es.hora_entrada, es.hora_salida)) AS tiempo_estancia 
-                                    FROM entradas_salidas es
-                                    JOIN estudiantes e ON es.id_estudiante = e.id_estudiante
-                                    WHERE es.hora_entrada BETWEEN ? AND ?
-                                    ORDER BY e.carrera, e.nombre");
+    $query_detalle = "SELECT e.ru, e.nombre, e.apellido_paterno, e.apellido_materno, e.carrera,
+                             COUNT(*) as total_visitas,
+                             MIN(es.hora_entrada) as primera_visita,
+                             MAX(es.hora_entrada) as ultima_visita
+                      FROM entradas_salidas es
+                      JOIN estudiantes e ON es.id_estudiante = e.id_estudiante
+                      WHERE es.hora_entrada BETWEEN ? AND ?
+                      GROUP BY e.id_estudiante
+                      ORDER BY e.carrera, total_visitas DESC";
     
-    $stmt_detalle->bind_param("ss", $fecha_inicio, $fecha_fin);
-    $stmt_detalle->execute();
-    $resultado_detalle = $stmt_detalle->get_result();
-    $stmt_detalle->close();
+    $stmt = $conn->prepare($query_detalle);
+    $stmt->bind_param("ss", $fecha_inicio, $fecha_fin);
+    $stmt->execute();
+    $detalle = $stmt->get_result();
     
-    if ($resultado_detalle && $resultado_detalle->num_rows > 0) {
-        // Tabla Detallada
-        $pdf->SetFont('Arial','B',12);
-        $pdf->Cell(60,10, 'Carrera', 1);
-        $pdf->Cell(60,10, 'Nombre Estudiante', 1);
-        $pdf->Cell(60,10, 'Tiempo en Biblioteca', 1, 1);
+    if ($detalle->num_rows > 0) {
+        // Encabezados de la tabla detallada
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->Cell(20, 7, 'RU', 1);
+        $pdf->Cell(60, 7, textoPDF('Estudiante'), 1);
+        $pdf->Cell(40, 7, textoPDF('Carrera'), 1);
+        $pdf->Cell(20, 7, 'Visitas', 1, 0, 'C');
+        $pdf->Cell(25, 7, 'Primera Visita', 1, 0, 'C');
+        $pdf->Cell(25, 7, 'Ultima Visita', 1, 1, 'C');
         
-        $pdf->SetFont('Arial','',12);
-        while ($row = $resultado_detalle->fetch_assoc()) {
-            $nombre_completo = iconv('UTF-8', 'ISO-8859-1', $row['nombre'] . ' ' . $row['apellido_paterno']);
-            $carrera = iconv('UTF-8', 'ISO-8859-1', $row['carrera']);
-            $tiempo = $row['tiempo_estancia'];
+        $pdf->SetFont('Arial', '', 8);
+        while ($row = $detalle->fetch_assoc()) {
+            $nombre = $row['nombre'] . ' ' . $row['apellido_paterno'] . ' ' . $row['apellido_materno'];
+            $primera_visita = date('d/m H:i', strtotime($row['primera_visita']));
+            $ultima_visita = date('d/m H:i', strtotime($row['ultima_visita']));
             
-            $pdf->Cell(60,10, $carrera, 1);
-            $pdf->Cell(60,10, $nombre_completo, 1);
-            $pdf->Cell(60,10, $tiempo, 1, 1);
+            $pdf->Cell(20, 6, $row['ru'], 1);
+            $pdf->Cell(60, 6, textoPDF($nombre), 1);
+            $pdf->Cell(40, 6, textoPDF($row['carrera']), 1);
+            $pdf->Cell(20, 6, $row['total_visitas'], 1, 0, 'C');
+            $pdf->Cell(25, 6, $primera_visita, 1, 0, 'C');
+            $pdf->Cell(25, 6, $ultima_visita, 1, 1, 'C');
         }
     } else {
-        $pdf->SetFont('Arial','I',12);
-        $pdf->Cell(0,10, 'No se encontraron datos detallados para el rango de fechas seleccionado.', 0, 1, 'C');
+        $pdf->Cell(0, 10, textoPDF('No hay datos detallados de asistencia'), 0, 1);
     }
 }
 
-$pdf->Output();
+function generarReportePrestamos($pdf, $conn, $fecha_inicio, $fecha_fin) {
+    // 1. Resumen por carrera
+    $pdf->SetFont('Arial', 'B', 14);
+    $pdf->Cell(0, 10, textoPDF('Resumen por Carrera'), 0, 1);
+    $pdf->Ln(5);
+    
+    $query_resumen = "SELECT e.carrera, COUNT(*) as prestamos,
+                             SUM(CASE WHEN p.lugar='sala' THEN 1 ELSE 0 END) as sala,
+                             SUM(CASE WHEN p.lugar='domicilio' THEN 1 ELSE 0 END) as domicilio,
+                             SUM(CASE WHEN p.lugar='fotocopia' THEN 1 ELSE 0 END) as fotocopia
+                      FROM prestamo p
+                      JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
+                      WHERE p.fecha_prestamo BETWEEN ? AND ?
+                      GROUP BY e.carrera
+                      ORDER BY prestamos DESC";
+    
+    $stmt = $conn->prepare($query_resumen);
+    $stmt->bind_param("ss", $fecha_inicio, $fecha_fin);
+    $stmt->execute();
+    $resumen = $stmt->get_result();
+    
+    // Tabla de resumen
+    $pdf->SetFont('Arial', 'B', 10);
+    $pdf->Cell(70, 7, textoPDF('Carrera'), 1);
+    $pdf->Cell(20, 7, 'Total', 1, 0, 'C');
+    $pdf->Cell(20, 7, 'Sala', 1, 0, 'C');
+    $pdf->Cell(25, 7, 'Domicilio', 1, 0, 'C');
+    $pdf->Cell(25, 7, 'Fotocopia', 1, 0, 'C');
+    $pdf->Cell(30, 7, '% Domicilio', 1, 1, 'C');
+    
+    $pdf->SetFont('Arial', '', 9);
+    while ($row = $resumen->fetch_assoc()) {
+        $porcentaje = $row['prestamos'] > 0 ? round(($row['domicilio']/$row['prestamos'])*100, 1) : 0;
+        
+        $pdf->Cell(70, 6, textoPDF($row['carrera']), 1);
+        $pdf->Cell(20, 6, $row['prestamos'], 1, 0, 'C');
+        $pdf->Cell(20, 6, $row['sala'], 1, 0, 'C');
+        $pdf->Cell(25, 6, $row['domicilio'], 1, 0, 'C');
+        $pdf->Cell(25, 6, $row['fotocopia'], 1, 0, 'C');
+        $pdf->Cell(30, 6, $porcentaje . '%', 1, 1, 'C');
+    }
+    
+    $pdf->Ln(15);
+    
+    // 2. Detalle de préstamos
+    $pdf->SetFont('Arial', 'B', 14);
+    $pdf->Cell(0, 10, textoPDF('Detalle de Préstamos'), 0, 1);
+    $pdf->Ln(5);
+    
+    $query_detalle = "SELECT p.id_prestamo, p.fecha_prestamo, p.lugar,
+                             e.ru, e.nombre, e.apellido_paterno, e.apellido_materno, e.carrera,
+                             l.titulo as libro
+                      FROM prestamo p
+                      JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
+                      JOIN ejemplares ej ON p.id_ejemplar = ej.id_ejemplar
+                      JOIN libros l ON ej.id_libro = l.id_libro
+                      WHERE p.fecha_prestamo BETWEEN ? AND ?
+                      ORDER BY p.fecha_prestamo DESC";
+    
+    $stmt = $conn->prepare($query_detalle);
+    $stmt->bind_param("ss", $fecha_inicio, $fecha_fin);
+    $stmt->execute();
+    $detalle = $stmt->get_result();
+    
+    if ($detalle->num_rows > 0) {
+        // Encabezados de la tabla detallada
+        $pdf->SetFont('Arial', 'B', 9);
+        $pdf->Cell(20, 7, 'Fecha', 1);
+        $pdf->Cell(15, 7, 'Lugar', 1);
+        $pdf->Cell(20, 7, 'RU', 1);
+        $pdf->Cell(50, 7, textoPDF('Estudiante'), 1);
+        $pdf->Cell(85, 7, textoPDF('Libro'), 1, 1);
+        
+        $pdf->SetFont('Arial', '', 8);
+        while ($row = $detalle->fetch_assoc()) {
+            $fecha = date('d/m H:i', strtotime($row['fecha_prestamo']));
+            $nombre = $row['nombre'] . ' ' . $row['apellido_paterno'] . ' ' . $row['apellido_materno'];
+            $libro = strlen($row['libro']) > 50 ? substr($row['libro'], 0, 47) . '...' : $row['libro'];
+            
+            $pdf->Cell(20, 6, $fecha, 1);
+            $pdf->Cell(15, 6, textoPDF($row['lugar']), 1);
+            $pdf->Cell(20, 6, $row['ru'], 1);
+            $pdf->Cell(50, 6, textoPDF($nombre), 1);
+            $pdf->Cell(85, 6, textoPDF($libro), 1, 1);
+        }
+    } else {
+        $pdf->Cell(0, 10, textoPDF('No hay datos detallados de préstamos'), 0, 1);
+    }
+}
+
+function generarReporteLibros($pdf, $conn, $fecha_inicio, $fecha_fin) {
+    // 1. Resumen de libros más prestados
+    $pdf->SetFont('Arial', 'B', 14);
+    $pdf->Cell(0, 10, textoPDF('Libros Más Prestados'), 0, 1);
+    $pdf->Ln(5);
+    
+    $query_resumen = "SELECT l.titulo, l.autor, COUNT(*) as prestamos
+                      FROM prestamo p
+                      JOIN ejemplares ej ON p.id_ejemplar = ej.id_ejemplar
+                      JOIN libros l ON ej.id_libro = l.id_libro
+                      WHERE p.fecha_prestamo BETWEEN ? AND ?
+                      GROUP BY l.id_libro
+                      ORDER BY prestamos DESC
+                      LIMIT 10";
+    
+    $stmt = $conn->prepare($query_resumen);
+    $stmt->bind_param("ss", $fecha_inicio, $fecha_fin);
+    $stmt->execute();
+    $resumen = $stmt->get_result();
+    
+    // Tabla de resumen
+    $pdf->SetFont('Arial', 'B', 10);
+    $pdf->Cell(120, 7, textoPDF('Título'), 1);
+    $pdf->Cell(50, 7, textoPDF('Autor'), 1);
+    $pdf->Cell(20, 7, 'Prestamos', 1, 1, 'C');
+    
+    $pdf->SetFont('Arial', '', 9);
+    while ($row = $resumen->fetch_assoc()) {
+        $titulo = strlen($row['titulo']) > 70 ? substr($row['titulo'], 0, 67) . '...' : $row['titulo'];
+        $autor = strlen($row['autor']) > 30 ? substr($row['autor'], 0, 27) . '...' : $row['autor'];
+        
+        $pdf->Cell(120, 6, textoPDF($titulo), 1);
+        $pdf->Cell(50, 6, textoPDF($autor), 1);
+        $pdf->Cell(20, 6, $row['prestamos'], 1, 1, 'C');
+    }
+    
+    $pdf->Ln(15);
+    
+    // 2. Detalle de préstamos por libro
+    $pdf->SetFont('Arial', 'B', 14);
+    $pdf->Cell(0, 10, textoPDF('Detalle de Préstamos por Libro'), 0, 1);
+    $pdf->Ln(5);
+    
+    $query_detalle = "SELECT l.titulo, 
+                             p.fecha_prestamo,
+                             e.ru, e.nombre, e.apellido_paterno, e.apellido_materno, e.carrera,
+                             p.lugar
+                      FROM prestamo p
+                      JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
+                      JOIN ejemplares ej ON p.id_ejemplar = ej.id_ejemplar
+                      JOIN libros l ON ej.id_libro = l.id_libro
+                      WHERE p.fecha_prestamo BETWEEN ? AND ?
+                      ORDER BY l.titulo, p.fecha_prestamo DESC";
+    
+    $stmt = $conn->prepare($query_detalle);
+    $stmt->bind_param("ss", $fecha_inicio, $fecha_fin);
+    $stmt->execute();
+    $detalle = $stmt->get_result();
+    
+    if ($detalle->num_rows > 0) {
+        $libro_actual = '';
+        while ($row = $detalle->fetch_assoc()) {
+            // Mostrar título del libro como sección si cambió
+            if ($libro_actual != $row['titulo']) {
+                $libro_actual = $row['titulo'];
+                $pdf->SetFont('Arial', 'B', 12);
+                $pdf->Cell(0, 8, textoPDF('Libro: ' . $libro_actual), 0, 1);
+                $pdf->Ln(2);
+                
+                // Encabezados de la tabla
+                $pdf->SetFont('Arial', 'B', 9);
+                $pdf->Cell(25, 7, 'Fecha', 1);
+                $pdf->Cell(20, 7, 'Lugar', 1);
+                $pdf->Cell(20, 7, 'RU', 1);
+                $pdf->Cell(70, 7, textoPDF('Estudiante'), 1);
+                $pdf->Cell(55, 7, textoPDF('Carrera'), 1, 1);
+            }
+            
+            $fecha = date('d/m H:i', strtotime($row['fecha_prestamo']));
+            $nombre = $row['nombre'] . ' ' . $row['apellido_paterno'] . ' ' . $row['apellido_materno'];
+            
+            $pdf->SetFont('Arial', '', 8);
+            $pdf->Cell(25, 6, $fecha, 1);
+            $pdf->Cell(20, 6, textoPDF($row['lugar']), 1);
+            $pdf->Cell(20, 6, $row['ru'], 1);
+            $pdf->Cell(70, 6, textoPDF($nombre), 1);
+            $pdf->Cell(55, 6, textoPDF($row['carrera']), 1, 1);
+        }
+    } else {
+        $pdf->Cell(0, 10, textoPDF('No hay datos detallados de préstamos por libro'), 0, 1);
+    }
+}
 ?>

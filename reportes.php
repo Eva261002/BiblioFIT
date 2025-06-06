@@ -1,255 +1,224 @@
 <?php
 include('includes/db.php');
 require('fpdf/fpdf.php');
-include('includes/auth.php'); 
-// Inicializar variables
-$tipo_reporte = $_POST['tipo_reporte'] ?? '';
-$fecha_inicio = $_POST['fecha_inicio'] ?? '';
-$fecha_fin = $_POST['fecha_fin'] ?? '';
-$reporte_resultado = null;
+include('includes/auth.php');
 
-// Generar el reporte basado en el tipo de reporte seleccionado
-if ($tipo_reporte && $fecha_inicio && $fecha_fin) {
-    switch ($tipo_reporte) {
-        case 'asistencia':
-            $query = "SELECT e.carrera, 
-                             COUNT(*) AS total_asistencia, 
-                             DATE_FORMAT(SEC_TO_TIME(AVG(TIMESTAMPDIFF(SECOND, es.hora_entrada, es.hora_salida))), '%H:%i') AS tiempo_promedio 
-                      FROM entradas_salidas es
-                      JOIN estudiantes e ON es.id_estudiante = e.id_estudiante
-                      WHERE es.hora_entrada BETWEEN '$fecha_inicio' AND '$fecha_fin' 
-                      GROUP BY e.carrera";
-            break;
+// 1. Lógica para procesar reportes
+$tipo_reporte = $_GET['reporte'] ?? 'asistencia';
+$fecha_inicio = $_GET['fecha_inicio'] ?? date('Y-m-01');
+$fecha_fin = $_GET['fecha_fin'] ?? date('Y-m-d');
+$resultados = null;
 
-        case 'prestamos_libros':
-            // Obtener el total de préstamos por carrera
-            $query = "SELECT e.carrera, COUNT(*) AS total_prestamos 
-                      FROM prestamo p 
-                      JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
-                      WHERE p.fecha_prestamo BETWEEN '$fecha_inicio' AND '$fecha_fin' 
-                      GROUP BY e.carrera";
+// Consultas según tipo de reporte
+switch($tipo_reporte) {
+    case 'asistencia':
+        $query = "SELECT e.carrera, COUNT(*) as visitas 
+                 FROM entradas_salidas es
+                 JOIN estudiantes e ON es.id_estudiante = e.id_estudiante
+                 WHERE es.hora_entrada BETWEEN ? AND ?
+                 GROUP BY e.carrera";
+        break;
+        
+    case 'prestamos':
+        $query = "SELECT e.carrera, COUNT(*) as prestamos,
+                         SUM(CASE WHEN p.lugar='sala' THEN 1 ELSE 0 END) as sala,
+                         SUM(CASE WHEN p.lugar='domicilio' THEN 1 ELSE 0 END) as domicilio,
+                         SUM(CASE WHEN p.lugar='fotocopia' THEN 1 ELSE 0 END) as fotocopia
+                  FROM prestamo p
+                  JOIN estudiantes e ON p.id_estudiante = e.id_estudiante
+                  WHERE p.fecha_prestamo BETWEEN ? AND ?
+                  GROUP BY e.carrera";
+        break;
+        
+    case 'libros':
+        $query = "SELECT l.titulo, COUNT(*) as prestamos
+                 FROM prestamo p
+                 JOIN ejemplares ej ON p.id_ejemplar = ej.id_ejemplar
+                 JOIN libros l ON ej.id_libro = l.id_libro
+                 WHERE p.fecha_prestamo BETWEEN ? AND ?
+                 GROUP BY l.titulo
+                 ORDER BY prestamos DESC
+                 LIMIT 10";
+        break;
+}
 
-            // Consulta adicional para obtener los libros más prestados
-            $query_libros = "SELECT l.titulo, COUNT(*) AS total_prestamos 
-                             FROM prestamo p
-                             JOIN libros l ON p.id_libro = l.id_libro
-                             WHERE p.fecha_prestamo BETWEEN '$fecha_inicio' AND '$fecha_fin'
-                             GROUP BY l.titulo
-                             ORDER BY total_prestamos DESC
-                             LIMIT 5";
-            $resultado_libros = $conn->query($query_libros);
-            $libros_titulos = [];
-            $libros_prestamos = [];
-
-            while ($row = $resultado_libros->fetch_assoc()) {
-                $libros_titulos[] = $row['titulo'];
-                $libros_prestamos[] = $row['total_prestamos'];
-            }
-            break;
+if(isset($query)) {
+    $stmt = $conn->prepare($query);
+    if ($stmt === false) {
+        die('Error en la preparación de la consulta: ' . $conn->error);
     }
-
-    if (isset($query)) {
-        $reporte_resultado = $conn->query($query);
+    
+    $fecha_fin_completa = $fecha_fin . ' 23:59:59';
+    $stmt->bind_param("ss", $fecha_inicio, $fecha_fin_completa);
+    
+    if (!$stmt->execute()) {
+        die('Error al ejecutar la consulta: ' . $stmt->error);
     }
+    
+    $resultados = $stmt->get_result();
+    $stmt->close();
 }
 ?>
 
+<!DOCTYPE html>
+<!-- Resto del código HTML permanece igual -->
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generación de Reportes - Biblioteca</title>
+    <title>Reportes - Sistema de Biblioteca</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 </head>
 <body class="bg-gray-100">
-    <!-- Encabezado -->
-    <header class="bg-blue-600 shadow">
-        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white shadow">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center">
-                <!-- Icono de Biblioteca -->
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <!-- Contenido del SVG -->
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0H7a1 1 0 01-1-1v-2" />
+                <svg class="h-8 w-8 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                 </svg>
-                <a href="index.php" class="text-white text-2xl font-bold">Sistema de Biblioteca</a>
+                <h1 class="text-2xl font-bold">Sistema de Biblioteca</h1>
             </div>
-            <div>
-                <a href="index.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Inicio</a>
-                <a href="catalogo_libros.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Catálogo</a>
-                <a href="reportes.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Reportes</a>
-                <a href="listar_estudiantes.php" class="bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-800 transition">Estudiantes</a>
-            </div>
-        </nav>
+            <nav>
+                <a href="index.php" class="px-3 py-2 rounded hover:bg-blue-700">Inicio</a>
+                <a href="reportes.php" class="px-3 py-2 rounded bg-blue-700">Reportes</a>
+            </nav>
+        </div>
     </header>
 
-    <!-- Contenedor principal -->
-    <section class="container mx-auto px-4">
-        <!-- Formulario de Reportes -->
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Generar Reporte</h2>
-
-            <form method="POST" action="" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <!-- Tipo de Reporte -->
-    <div class="col-span-2 md:col-span-1">
-        <label for="tipo_reporte" class="block text-gray-700">Tipo de Reporte:</label>
-        <select name="tipo_reporte" id="tipo_reporte" class="w-full border border-gray-300 rounded-md px-3 py-2">
-            <option value="asistencia">Asistencia por Carrera</option>
-            <option value="prestamos_libros">Préstamos de libros</option>
-        </select>
-    </div>
-
-    
-    <!-- Rango de Fecha en una sola fila -->
-    <div class="col-span-2 grid grid-cols-2 gap-4">
-        <div>
-            <label for="fecha_inicio" class="block text-gray-700">Fecha de Inicio:</label>
-            <input type="date" name="fecha_inicio" id="fecha_inicio" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
-        </div>
-        <div>
-            <label for="fecha_fin" class="block text-gray-700">Fecha de Fin:</label>
-            <input type="date" name="fecha_fin" id="fecha_fin" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
-        </div>
-    </div>
-
-    <!-- Botón de Generar Reporte -->
-    <div class="md:col-span-2">
-        <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition">Generar Reporte</button>
-    </div>
-</form>
-
-        </div>
-
-          <!-- Descargar PDF -->
-<form method="POST" action="generar_pdf.php">
-    <input type="hidden" name="tipo_reporte" value="<?php echo $tipo_reporte; ?>">
-    <input type="hidden" name="fecha_inicio" value="<?php echo $fecha_inicio; ?>">
-    <input type="hidden" name="fecha_fin" value="<?php echo $fecha_fin; ?>">
-    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-        Ver en PDF
-    </button>
-</form>
-
-<!-- Resultados del Reporte -->
-<div class="bg-white rounded-lg shadow-lg p-6">
-    <h3 class="text-xl font-semibold mb-4 text-gray-800">Resultados del Reporte</h3>
-    <?php if ($reporte_resultado && $reporte_resultado->num_rows > 0): ?>
-        <?php if ($tipo_reporte == 'asistencia'): ?>
-            <!-- Tabla Resumen -->
-            <h4 class="text-lg font-semibold mb-2">Resumen por Carrera</h4>
-            <table class="min-w-full bg-white border-collapse mb-6">
-                <thead>
-                    <tr>
-                        <th class="py-2 border-b">Carrera</th>
-                        <th class="py-2 border-b">Tiempo Promedio</th>
-                        <th class="py-2 border-b">Total Asistencias</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($row = $reporte_resultado->fetch_assoc()): ?>
-                        <tr>
-                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['carrera']); ?></td>
-                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['tiempo_promedio']); ?></td>
-                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['total_asistencia']); ?></td>
-                        </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
+    <!-- Contenido principal -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Generar Reportes</h2>
             
-            <!-- Consulta para Detalles por Estudiante -->
-            <?php
-            $query_detalle = "SELECT e.carrera, e.nombre, e.apellido_paterno, 
-                                     SEC_TO_TIME(TIMESTAMPDIFF(SECOND, es.hora_entrada, es.hora_salida)) AS tiempo_estancia 
-                              FROM entradas_salidas es
-                              JOIN estudiantes e ON es.id_estudiante = e.id_estudiante
-                              WHERE es.hora_entrada BETWEEN '$fecha_inicio' AND '$fecha_fin'
-                              ORDER BY e.carrera, e.nombre";
-            
-            $resultado_detalle = $conn->query($query_detalle);
-            ?>
-            
-            <?php if ($resultado_detalle && $resultado_detalle->num_rows > 0): ?>
-                <!-- Tabla Detallada -->
-                <h4 class="text-lg font-semibold mb-2">Detalle por Carrera y Estudiante</h4>
-                <table class="min-w-full bg-white border-collapse">
-                    <thead>
-                        <tr>
-                            <th class="py-2 border-b">Carrera</th>
-                            <th class="py-2 border-b">Nombre Estudiante</th>
-                            <th class="py-2 border-b">Tiempo en Biblioteca</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while ($row_detalle = $resultado_detalle->fetch_assoc()): ?>
-                            <tr>
-                                <td class="py-2 border-b"><?php echo htmlspecialchars($row_detalle['carrera']); ?></td>
-                                <td class="py-2 border-b"><?php echo htmlspecialchars($row_detalle['nombre'] . ' ' . $row_detalle['apellido_paterno']); ?></td>
-                                <td class="py-2 border-b"><?php echo htmlspecialchars($row_detalle['tiempo_estancia']); ?></td>
-                            </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-        <?php elseif ($tipo_reporte == 'prestamos_libros'): ?>
-            <!-- Tabla Resumen de Préstamos por Carrera -->
-            <h4 class="text-lg font-semibold mb-2">Resumen de Préstamos por Carrera</h4>
-            <table class="min-w-full bg-white border-collapse mb-6">
-                <thead>
-                    <tr>
-                        <th class="py-2 border-b">Carrera</th>
-                        <th class="py-2 border-b">Total Préstamos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($row = $reporte_resultado->fetch_assoc()): ?>
-                        <tr>
-                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['carrera']); ?></td>
-                            <td class="py-2 border-b"><?php echo htmlspecialchars($row['total_prestamos']); ?></td>
-                        </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
-
-            <!-- Gráfico de Libros Más Prestados -->
-            <?php if (!empty($libros_titulos)): ?>
-                <div class="bg-white rounded-lg shadow-lg p-6 mt-6">
-                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Libros Más Prestados</h3>
-                    <canvas id="chartLibrosPrestados"></canvas>
+            <!-- Filtros -->
+            <form method="GET" action="reportes.php" class="mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- Tipo de Reporte -->
+                    <div>
+                        <label class="block text-gray-700 mb-2">Tipo de Reporte</label>
+                        <select name="reporte" class="w-full px-4 py-2 border rounded">
+                            <option value="asistencia" <?= $tipo_reporte == 'asistencia' ? 'selected' : '' ?>>Asistencia</option>
+                            <option value="prestamos" <?= $tipo_reporte == 'prestamos' ? 'selected' : '' ?>>Préstamos</option>
+                            <option value="libros" <?= $tipo_reporte == 'libros' ? 'selected' : '' ?>>Libros más prestados</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Fechas -->
+                    <div>
+                        <label class="block text-gray-700 mb-2">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" value="<?= $fecha_inicio ?>" class="w-full px-4 py-2 border rounded">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 mb-2">Fecha Fin</label>
+                        <input type="date" name="fecha_fin" value="<?= $fecha_fin ?>" class="w-full px-4 py-2 border rounded">
+                    </div>
+                    
+                    <!-- Botón -->
+                    <div class="flex items-end">
+                        <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                            Generar Reporte
+                        </button>
+                    </div>
                 </div>
-                <script>
-                    var ctx = document.getElementById('chartLibrosPrestados').getContext('2d');
-                    var chartLibrosPrestados = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: <?php echo json_encode($libros_titulos); ?>,
-                            datasets: [{
-                                label: 'Total de Préstamos',
-                                data: <?php echo json_encode($libros_prestamos); ?>,
-                                backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                                borderColor: 'rgba(54, 162, 235, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            scales: {
-                                y: {
-                                    beginAtZero: true
-                                }
-                            }
-                        }
-                    });
-                </script>
+            </form>
+            
+            <!-- Botón Exportar PDF -->
+            <?php if($resultados && $resultados->num_rows > 0): ?>
+            <form method="POST" action="generar_pdf.php" class="mb-8">
+                <input type="hidden" name="tipo_reporte" value="<?= $tipo_reporte ?>">
+                <input type="hidden" name="fecha_inicio" value="<?= $fecha_inicio ?>">
+                <input type="hidden" name="fecha_fin" value="<?= $fecha_fin ?>">
+                <button type="submit" class="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700">
+                    Exportar a PDF
+                </button>
+            </form>
             <?php endif; ?>
-        <?php endif; ?>
-    <?php else: ?>
-        <p class="text-gray-600">No se encontraron resultados para el rango de fechas seleccionado.</p>
-    <?php endif; ?>
-</div>
+            
+            <!-- Resultados -->
+            <div class="overflow-x-auto">
+                <?php if($resultados && $resultados->num_rows > 0): ?>
+                
+                    <?php if($tipo_reporte == 'asistencia'): ?>
+                    <h3 class="text-xl font-bold mb-4">Asistencia por Carrera</h3>
+                    <table class="min-w-full bg-white border">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="py-2 px-4 border">Carrera</th>
+                                <th class="py-2 px-4 border">Visitas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($row = $resultados->fetch_assoc()): ?>
+                            <tr>
+                                <td class="py-2 px-4 border"><?= htmlspecialchars($row['carrera']) ?></td>
+                                <td class="py-2 px-4 border text-center"><?= $row['visitas'] ?></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                    
+                    <?php elseif($tipo_reporte == 'prestamos'): ?>
+                    <h3 class="text-xl font-bold mb-4">Préstamos por Carrera</h3>
+                    <table class="min-w-full bg-white border">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="py-2 px-4 border">Carrera</th>
+                                <th class="py-2 px-4 border">Total</th>
+                                <th class="py-2 px-4 border">Sala</th>
+                                <th class="py-2 px-4 border">Domicilio</th>
+                                <th class="py-2 px-4 border">Fotocopia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($row = $resultados->fetch_assoc()): ?>
+                            <tr>
+                                <td class="py-2 px-4 border"><?= htmlspecialchars($row['carrera']) ?></td>
+                                <td class="py-2 px-4 border text-center"><?= $row['prestamos'] ?></td>
+                                <td class="py-2 px-4 border text-center"><?= $row['sala'] ?></td>
+                                <td class="py-2 px-4 border text-center"><?= $row['domicilio'] ?></td>
+                                <td class="py-2 px-4 border text-center"><?= $row['fotocopia'] ?></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                    
+                    <?php elseif($tipo_reporte == 'libros'): ?>
+                    <h3 class="text-xl font-bold mb-4">Libros más prestados</h3>
+                    <table class="min-w-full bg-white border">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="py-2 px-4 border">Libro</th>
+                                <th class="py-2 px-4 border">Préstamos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($row = $resultados->fetch_assoc()): ?>
+                            <tr>
+                                <td class="py-2 px-4 border"><?= htmlspecialchars($row['titulo']) ?></td>
+                                <td class="py-2 px-4 border text-center"><?= $row['prestamos'] ?></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                    <?php endif; ?>
+                    
+                <?php else: ?>
+                    <p class="text-gray-600">No hay resultados para mostrar. Seleccione filtros y genere un reporte.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+    </main>
 
-
-    </section>
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>Sistema de Biblioteca &copy; <?= date('Y') ?></p>
+        </div>
+    </footer>
 </body>
 </html>
