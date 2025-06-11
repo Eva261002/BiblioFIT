@@ -26,6 +26,26 @@
         return true;
     }
 
+    function validarLogin() {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+
+    // Validación de campos vacíos
+    if (email === "" || password === "") {
+        alert("Por favor, complete todos los campos.");
+        return false;
+    }
+
+    // Validación básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        alert("Por favor, ingresa un correo electrónico válido.");
+        return false;
+    }
+
+    return true;
+}
+
 
 
     
