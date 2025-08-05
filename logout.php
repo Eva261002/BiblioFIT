@@ -17,7 +17,7 @@ if (ini_get("session.use_cookies")) {
         $params["httponly"]
     );
 }
-
+ 
 // 2. Destruir completamente la sesión
 $_SESSION = array(); // Vaciar el array de sesión
 session_destroy();   // Destruir la sesión del servidor

@@ -22,7 +22,7 @@
                 break;
             default:
                 echo 'Error al iniciar sesión';
-                
+                 
         }
         ?>
     </div>

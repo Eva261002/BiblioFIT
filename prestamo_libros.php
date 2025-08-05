@@ -1,9 +1,8 @@
 <?php
 include('includes/db.php');
-//Nota: preguntar si agrego quien presta, solo estudiantes u otro particular
+include ('includes/header.php'); 
 
 
-//2tienes que agregar el cambio de deep
 date_default_timezone_set('America/La_Paz');
 
 // Determinar el modo de la página (prestar o devolver)
@@ -123,24 +122,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
         <script src="scripts/prestamo_libros.js"></script>
     </head>
     <body class="bg-gray-100 flex flex-col min-h-screen">
-        <!-- Encabezado -->
-        <header class="bg-blue-600 shadow">
-            <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
-                <div class="flex items-center">
-                    <!-- Icono de Biblioteca -->
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0H7a1 1 0 01-1-1v-2" />
-                    </svg>
-                    <a href="index.php" class="text-white text-2xl font-bold">Sistema de Biblioteca</a>
-                </div>
-                <div>
-                    <a href="index.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Inicio</a>
-                    <a href="catalogo_libros.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Catálogo</a>
-                    <a href="reportes.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition">Reportes</a>
-                    <a href="listar_estudiantes.php" class="bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-800 transition">Estudiantes</a>
-                </div>
-            </nav>
-        </header>
+
+
         <main class="container mx-auto px-6 py-12 flex-grow">
             <h1 class="text-3xl font-bold text-center mb-6"><?php echo $modo === 'prestar' ? 'Préstamo' : 'Devolución'; ?> de Libros</h1>
 
@@ -277,13 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
             </div>    
 
         </main>
-
-        <!-- Pie de Página -->
-        <footer class="bg-gray-800 text-white py-6">
-            <div class="container mx-auto text-center">
-                &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
-            </div>
-        </footer>
+<?php include 'includes/footer.php'; ?>
     </body>
 <!-- Modal para seleccionar el lugar -->
 <div id="modalPrestamo" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">

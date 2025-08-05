@@ -1,6 +1,10 @@
 <?php
 session_start();
 
+
+
+ include ('includes/header.php'); 
+
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
@@ -22,32 +26,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-50 flex flex-col min-h-screen">
-    <!-- Encabezado Mejorado -->
-    <header class="bg-gradient-to-r from-blue-500 to-blue-700 shadow-lg">
-        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                <a href="#" class="text-white text-2xl font-bold hover:text-gray-200 transition">Sistema de Biblioteca</a>
-            </div>
 
-            <!-- Menú de navegación mejorado con cierre de sesión directo -->
-            <div class="flex items-center space-x-4">
-                <div class="hidden md:flex space-x-4">
-                    <a href="reportes.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition flex items-center">
-                        <i class="fas fa-chart-bar mr-2"></i> Reportes
-                    </a>
-                    <a href="listar_estudiantes.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition flex items-center">
-                        <i class="fas fa-users mr-2"></i> Estudiantes
-                    </a>
-                </div>
-                <a href="logout.php" class="text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-600 transition flex items-center">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Cerrar Sesión
-                </a>
-            </div>
-        </nav>
-    </header>
 
     <!-- Sección de Bienvenida Mejorada -->
     <section class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white relative overflow-hidden">
