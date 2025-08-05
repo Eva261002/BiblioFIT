@@ -1,6 +1,7 @@
 <?php
 include('includes/db.php');
 
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $accion = $_POST['accion'];
     $ru = $_POST['ru'];
