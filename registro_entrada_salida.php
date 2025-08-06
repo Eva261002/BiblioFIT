@@ -1,5 +1,12 @@
 <?php
-include ('includes/header.php'); 
+require_once 'includes/config.php'; 
+
+// Obtener el nombre del archivo actual
+$current_module = basename($_SERVER['PHP_SELF']);
+
+// Verificar acceso al módulo
+verifyModuleAccess($current_module);
+
 ?>
 <!DOCTYPE html>
 <html lang="es">

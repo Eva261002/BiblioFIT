@@ -74,11 +74,6 @@
     </div>
 <?php endif; ?>
 
-    <!-- Pie de Página -->
-    <footer class="bg-gray-800 text-white py-6">
-        <div class="container mx-auto text-center">
-            &copy; 2024 Sistema de Biblioteca - FIT-UABJB. Todos los derechos reservados.
-        </div>
-    </footer>
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>

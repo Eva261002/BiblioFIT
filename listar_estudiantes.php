@@ -1,9 +1,11 @@
 <?php
-include('includes/db.php');
-include('includes/auth.php');
-include ('includes/header.php'); 
-// Restringir acceso solo a administradores
-checkRole('admin');
+require_once 'includes/config.php';
+$current_module = basename($_SERVER['PHP_SELF']);
+ 
+// Verificar acceso al módulo
+verifyModuleAccess($current_module);  
+
+
 // Inicializar la variable de búsqueda
 $search = "";
 

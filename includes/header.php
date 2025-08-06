@@ -1,7 +1,18 @@
 <?php
+require_once 'db.php';
 require_once 'auth.php';
-checkAuthentication(); // Verifica que el usuario esté logueado
-$modules = getAvailableModules($_SESSION['rol']);
+checkAuthentication(); 
+
+
+// Obtener módulos asignados al usuario
+$modules = getAvailableModules($_SESSION['user_id']);
+
+// Filtrar módulos basados en permisos (para usuarios no admin)
+if ($_SESSION['rol'] !== 'admin') {
+    $modules = array_filter($modules, function($module) {
+        return checkModuleAccess($module['url']);
+    });
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">

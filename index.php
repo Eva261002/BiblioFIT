@@ -146,8 +146,9 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
                     <span class="text-xl font-semibold">Sistema de Biblioteca</span>
                 </div>
                 <div class="flex space-x-6">
-                    <a href="#" class="hover:text-blue-300 transition">
+                    <a href="https://www.facebook.com/sistemasuabjb" class="hover:text-blue-300 transition">
                         <i class="fab fa-facebook-f"></i>
+
                     </a>
                     <a href="#" class="hover:text-blue-400 transition">
                         <i class="fab fa-twitter"></i>

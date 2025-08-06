@@ -1,9 +1,12 @@
 <?php
-include('includes/db.php');
-include('includes/auth.php');
-checkRole('admin');
+require_once 'includes/config.php';
+ // Obtener el nombre del archivo actual
+$current_module = basename($_SERVER['PHP_SELF']);
 
-include ('includes/header.php'); 
+// Verificar acceso al módulo
+verifyModuleAccess($current_module);
+
+
 // Filtro de búsqueda
 $search_query = '';
 if (isset($_GET['search'])) {
