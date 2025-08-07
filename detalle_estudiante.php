@@ -25,7 +25,7 @@ if ($result->num_rows === 0) {
 $estudiante = $result->fetch_assoc();
 
 // Obtener historial de entradas/salidas
-$sqlHistorial = "SELECT * FROM entradas_salidas 
+$sqlHistorial = "SELECT hora_entrada, hora_salida, motivo FROM entradas_salidas 
                  WHERE id_estudiante = ? 
                  ORDER BY hora_entrada DESC 
                  LIMIT 10";
@@ -78,6 +78,7 @@ while ($row = $historialResult->fetch_assoc()) {
                         <p><span class="font-semibold">Nombre Completo:</span> <?= htmlspecialchars($estudiante['nombre'] . ' ' . $estudiante['apellido_paterno'] . ' ' . $estudiante['apellido_materno']) ?></p>
                         <p><span class="font-semibold">RU:</span> <?= htmlspecialchars($estudiante['ru']) ?></p>
                         <p><span class="font-semibold">Carrera:</span> <?= htmlspecialchars($estudiante['carrera']) ?></p>
+                        <p><span class="font-semibold">Celular:</span> <?= htmlspecialchars($estudiante['celular']) ?></p>
                     </div>
                 </div>
 
@@ -131,7 +132,18 @@ while ($row = $historialResult->fetch_assoc()) {
                                                date('d/m/Y H:i', strtotime($registro['hora_salida'])) : 
                                                '<span class="text-yellow-600">En curso</span>' ?>
                                         </td>
-                                        <td class="px-4 py-2"><?= htmlspecialchars($registro['motivo'] ?? '-') ?></td> 
+                                        <td class="px-4 py-2">
+                                            <?php if (empty($registro['motivo']) || $registro['motivo'] == '-'): ?>
+                                                <span class="text-gray-400 flex items-center">
+                                                    <i class="fas fa-minus-circle mr-1"></i> No especificado
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="flex items-center">
+                                                    <i class="fas fa-comment-alt mr-2 text-blue-500"></i>                                       
+                                                    <?= htmlspecialchars($registro['motivo']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="px-4 py-2">
                                             <?php if (!empty($registro['hora_salida'])): ?>
                                                 <?php 

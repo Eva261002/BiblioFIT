@@ -51,65 +51,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     $accion = $_POST['accion'];
     $id_ejemplar = isset($_POST['id_ejemplar']) ? intval($_POST['id_ejemplar']) : null;
     $id_estudiante = isset($_POST['id_estudiante']) ? intval($_POST['id_estudiante']) : null;
-    $lugar = isset($_POST['lugar']) ? $_POST['lugar'] : 'domicilio'; // Nuevo campo
+    $lugar = isset($_POST['lugar']) ? $_POST['lugar'] : 'sala';
+    $telefono = isset($_POST['telefono']) ? $_POST['telefono'] : null;
 
     // Validar que el lugar sea uno de los permitidos
     $lugaresPermitidos = ['sala', 'domicilio', 'fotocopia'];
     if (!in_array($lugar, $lugaresPermitidos)) {
-        echo "<div class='bg-red-200 text-red-700 p-4 rounded'>Error: Lugar de préstamo no válido.</div>";
-        exit();
+        die("Lugar de préstamo no válido");
     }
 
-    if ($accion === 'prestar' && $id_ejemplar !== null && $id_estudiante !== null) {
-        $fecha_prestamo = date('Y-m-d H:i:s');
-
-        $conn->begin_transaction();
-        try {
-            // 1. Verificar si el estudiante ya tiene un libro prestado
-            $sql_check_prestamo = "SELECT * FROM prestamo WHERE id_estudiante = $id_estudiante AND estado = 'en curso'";
-            $result_prestamo = $conn->query($sql_check_prestamo);
-
-            if ($result_prestamo->num_rows > 0) {
-                throw new Exception('El estudiante ya tiene un recurso prestado.');
-            }
-
-            // 2. Verificar si el ejemplar está disponible
-            $sql_check_ejemplar = "SELECT estado FROM ejemplares WHERE id_ejemplar = $id_ejemplar";
-            $result_ejemplar = $conn->query($sql_check_ejemplar);
-
-            if ($result_ejemplar->num_rows === 0) {
-                throw new Exception('Ejemplar no encontrado.');
-            }
-
-            $ejemplar = $result_ejemplar->fetch_assoc();
-            $estado_ejemplar = $ejemplar['estado'];
-
-            if ($estado_ejemplar !== 'disponible') {
-                throw new Exception('El ejemplar no está disponible para prestar.');
-            }
-
-            // 3. Insertar el préstamo con el campo LUGAR
-            $sql_prestamo = "INSERT INTO prestamo (id_ejemplar, id_estudiante, fecha_prestamo, estado, lugar) 
-                            VALUES ($id_ejemplar, $id_estudiante, '$fecha_prestamo', 'en curso', '$lugar')";
-            if (!$conn->query($sql_prestamo)) {
-                throw new Exception('Error al registrar el préstamo.');
-            }
-
-            // 4. Actualizar el estado del ejemplar
-            $sql_update_ejemplar = "UPDATE ejemplares SET estado = 'prestado' WHERE id_ejemplar = $id_ejemplar";
-            if (!$conn->query($sql_update_ejemplar)) {
-                throw new Exception('Error al actualizar el estado del ejemplar.');
-            }
-
-            $conn->commit();
-            header('Location: catalogo_libros.php?prestamo=exitoso');
-            exit();
-        } catch (Exception $e) {
-            $conn->rollback();
-            echo "<div class='bg-red-200 text-red-700 p-4 rounded'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+    // Validar teléfono si es necesario
+    if (in_array($lugar, ['domicilio', 'fotocopia'])) {
+        if (empty($telefono)) {
+            die("El número de celular es requerido para este tipo de préstamo");
+        }
+        if (!preg_match('/^[0-9]{8}$/', $telefono)) {
+            die("El número de celular debe tener 8 dígitos");
         }
     }
-}
+
+    $fecha_prestamo = date('Y-m-d H:i:s');
+
+    $conn->begin_transaction();
+    try {
+        // 1. Verificar si el estudiante ya tiene un libro prestado
+        $sql_check_prestamo = "SELECT * FROM prestamo WHERE id_estudiante = $id_estudiante AND estado = 'en curso'";
+        $result_prestamo = $conn->query($sql_check_prestamo);
+
+        if ($result_prestamo->num_rows > 0) {
+            throw new Exception('El estudiante ya tiene un recurso prestado.');
+        }
+
+        // 2. Verificar si el ejemplar está disponible
+        $sql_check_ejemplar = "SELECT estado FROM ejemplares WHERE id_ejemplar = $id_ejemplar";
+        $result_ejemplar = $conn->query($sql_check_ejemplar);
+
+        if ($result_ejemplar->num_rows === 0) {
+            throw new Exception('Ejemplar no encontrado.');
+        }
+
+        $ejemplar = $result_ejemplar->fetch_assoc();
+        $estado_ejemplar = $ejemplar['estado'];
+
+        if ($estado_ejemplar !== 'disponible') {
+            throw new Exception('El ejemplar no está disponible para prestar.');
+        }
+
+        // 3. Actualizar teléfono del estudiante si es necesario
+        if (in_array($lugar, ['domicilio', 'fotocopia'])) {
+            $sql_update_telefono = "UPDATE estudiantes SET celular = '$telefono' WHERE id_estudiante = $id_estudiante";
+            if (!$conn->query($sql_update_telefono)) {
+                throw new Exception('Error al actualizar el teléfono del estudiante.');
+            }
+        }
+
+        // 4. Insertar el préstamo
+        $sql_prestamo = "INSERT INTO prestamo (id_ejemplar, id_estudiante, fecha_prestamo, estado, lugar) 
+                        VALUES ($id_ejemplar, $id_estudiante, '$fecha_prestamo', 'en curso', '$lugar')";
+        if (!$conn->query($sql_prestamo)) {
+            throw new Exception('Error al registrar el préstamo.');
+        }
+
+        // 5. Actualizar el estado del ejemplar
+        $sql_update_ejemplar = "UPDATE ejemplares SET estado = 'prestado' WHERE id_ejemplar = $id_ejemplar";
+        if (!$conn->query($sql_update_ejemplar)) {
+            throw new Exception('Error al actualizar el estado del ejemplar.');
+        }
+
+        $conn->commit();
+        header('Location: catalogo_libros.php?prestamo=exitoso');
+        exit();
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo "<div class='bg-red-200 text-red-700 p-4 rounded'>Error: " . htmlspecialchars($e->getMessage()) . "</div>";
+    }
+} // Este cierra el if inicial del POST
 ?>
     <!DOCTYPE html>
     <html lang="es">
@@ -263,6 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
 <?php include 'includes/footer.php'; ?>
     </body>
 <!-- Modal para seleccionar el lugar -->
+<!-- Modal para seleccionar el lugar -->
 <div id="modalPrestamo" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
     <div class="bg-white p-6 rounded-lg shadow-lg w-96">
         <h3 class="text-xl font-bold mb-4">Seleccione el lugar de préstamo</h3>
@@ -274,11 +292,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
             
             <div class="mb-4">
                 <label class="block text-gray-700 mb-2">Lugar:</label>
-                <select name="lugar" class="w-full px-4 py-2 border rounded-md" required>
+                <select name="lugar" id="selectLugar" class="w-full px-4 py-2 border rounded-md" required>
                     <option value="sala">Sala de lectura</option>
                     <option value="domicilio">Domicilio</option> 
                     <option value="fotocopia">Fotocopia</option>
                 </select>
+            </div>
+            
+            <!-- Campo de teléfono (inicialmente oculto) -->
+            <div id="telefonoContainer" class="hidden mb-4">
+                <label for="telefono" class="block text-sm font-medium text-gray-700 required-field">Número de celular</label>
+                <input type="tel" id="telefono" name="telefono" 
+                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                       pattern="[0-9]{8}" title="Ingrese 8 dígitos sin espacios ni guiones"
+                       placeholder="Ej: 76543210">
+                <p class="mt-1 text-xs text-gray-500">Requerido para préstamos a domicilio o fotocopia</p>
             </div>
             
             <div class="flex justify-end space-x-3">
@@ -293,9 +321,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
     </div>
 </div>
 
+  
+</div>
+
 <!-- Script para manejar el modal -->
 <script>
     function mostrarModalPrestamo(idEstudiante) {
+        document.getElementById('modalIdEstudiante').value = idEstudiante;
+        document.getElementById('modalPrestamo').classList.remove('hidden');
+    }
+
+    function cerrarModal() {
+        document.getElementById('modalPrestamo').classList.add('hidden');
+    }
+
+
+        // Mostrar/ocultar campo de teléfono según selección
+    document.getElementById('selectLugar').addEventListener('change', function() {
+        const telefonoContainer = document.getElementById('telefonoContainer');
+        if (this.value === 'domicilio' || this.value === 'fotocopia') {
+            telefonoContainer.classList.remove('hidden');
+            document.getElementById('telefono').required = true;
+        } else {
+            telefonoContainer.classList.add('hidden');
+            document.getElementById('telefono').required = false;
+        }
+    });
+
+    // Validación de teléfono en tiempo real
+    document.getElementById('telefono')?.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8);
+    });
+
+    function mostrarModalPrestamo(idEstudiante) {
+        // Resetear el modal cada vez que se abre
+        document.getElementById('selectLugar').value = 'sala';
+        document.getElementById('telefonoContainer').classList.add('hidden');
+        document.getElementById('telefono').required = false;
+        document.getElementById('telefono').value = '';
+        
         document.getElementById('modalIdEstudiante').value = idEstudiante;
         document.getElementById('modalPrestamo').classList.remove('hidden');
     }

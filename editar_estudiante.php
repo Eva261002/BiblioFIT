@@ -39,6 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $apellido_materno = trim($_POST['apellido_materno'] ?? '');
     $ru = trim($_POST['ru'] ?? '');
     $carrera = trim($_POST['carrera'] ?? '');
+    $celular = trim($_POST['celular'] ?? '');
 
     // Validaciones
     if (empty($ci)) {
@@ -57,6 +58,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (empty($ru)) {
         $errors['ru'] = "El RU es obligatorio";
+    }
+    if (!empty($celular) && !preg_match('/^[0-9]{8}$/', $celular)) {
+    $errors['celular'] = "El celular debe tener 8 dígitos numéricos";
     }
 
     // Verificar si el CI ya existe (excepto para este estudiante)
@@ -80,17 +84,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 apellido_paterno = ?, 
                 apellido_materno = ?, 
                 ru = ?, 
-                carrera = ? 
+                carrera = ?, 
+                celular = ?
                 WHERE id_estudiante = ?";
         
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssssi", 
+        $stmt->bind_param("sssssssi", 
             $ci,
             $nombre,
             $apellido_paterno,
             $apellido_materno,
             $ru,
             $carrera,
+            $celular,
             $idEstudiante
         );
         
@@ -235,6 +241,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
+                    <!-- Celular -->
+                    <div class="mb-6">
+                        <label for="celular" class="block text-lg font-medium text-gray-700 mb-2">
+                            Número de Celular
+                        </label>
+                        <input type="tel" name="celular" id="celular" 
+                            value="<?= htmlspecialchars($_POST['celular'] ?? $student['celular'] ?? '') ?>" 
+                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            pattern="[0-9]{8}"
+                            title="Ingrese 8 dígitos sin espacios ni guiones"
+                            placeholder="Ej: 76543210">
+                        <p class="text-xs text-gray-500 mt-1">Opcional, requerido solo para préstamos a domicilio/fotocopia</p>
+                    </div>
+
                     <!-- Botón de Enviar -->
                     <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center">
                         <i class="fas fa-save mr-2"></i> Actualizar Estudiante
@@ -256,6 +276,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 document.getElementById('otra_carrera').required = false;
             }
         });
+
+        // Validación de teléfono en tiempo real
+        document.getElementById('celular')?.addEventListener('input', function() {
+            // Limitar a 8 dígitos y solo números
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 8);
+            
+            // Cambiar color del borde según validación
+            if (this.value.length === 8 || this.value === '') {
+                this.classList.remove('border-red-500');
+                this.classList.add('border-green-500');
+            } else {
+                this.classList.remove('border-green-500');
+                this.classList.add('border-red-500');
+            }
+        });
+
     </script>
 </body>
 </html>

@@ -41,6 +41,7 @@ if ($orden && in_array($orden, ['titulo', 'autor', 'n_inventario', 'tipo_recurso
 $sql .= " LIMIT $offset, $registrosPorPagina";
 
 $result = $conn->query($sql);
+
 ?>
 
 <!DOCTYPE html>
@@ -188,7 +189,8 @@ $result = $conn->query($sql);
                                 <td class="py-3 px-4">
                                     <div class="flex justify-center space-x-3">
                                         <?php if($row['estado'] == 'disponible'): ?>
-                                            <a href="#" onclick="return confirmarPrestamo(<?= intval($row['id_libro']) ?>, '<?= addslashes($row['titulo']) ?>')" 
+                                            <a href="#" 
+                                            onclick="return confirmarPrestamo(<?= intval($row['id_libro']) ?>, <?= intval($row['id_ejemplar']) ?>, '<?= addslashes($row['titulo']) ?>')" 
                                             class="text-blue-600 hover:text-blue-800 transition-colors"
                                             title="Solicitar préstamo">
                                                 <i class="fas fa-book-reader"></i>
@@ -295,11 +297,11 @@ $result = $conn->query($sql);
             }
 
             // Funciones actualizadas para préstamo y eliminación
-            function confirmarPrestamo(id_libro, titulo) {
+            function confirmarPrestamo(id_libro, id_ejemplar, titulo) {
                 showModal(
                     'Confirmar Préstamo',
                     `¿Deseas solicitar el préstamo del libro "${titulo}"?`,
-                    `prestamo_libros.php?id_libro=${id_libro}`
+                    `prestamo_libros.php?modo=prestar&id_libro=${id_libro}&id_ejemplar=${id_ejemplar}`
                 );
                 return false;
             }
