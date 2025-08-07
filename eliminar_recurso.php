@@ -58,13 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirmar'])) {
             window.location.href = 'catalogo_libros.php';
         }
 
-        function confirmarEliminacion(id) {
-            event.preventDefault(); 
-            
-            if (confirm('¿Está seguro que desea eliminar este recurso?\nEsta acción no se puede deshacer.')) {
+        function confirmarEliminacion(id, titulo) {
+            if (confirm(`¿Está seguro que desea eliminar el recurso "${titulo}"?\nEsta acción eliminará también todos sus ejemplares asociados y no se puede deshacer.`)) {
                 window.location.href = 'eliminar_recurso.php?id=' + id;
             }
+            return false;
         }
+        
     </script>
 </head>
 <body class="bg-gray-100">

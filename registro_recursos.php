@@ -141,9 +141,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 <?= !empty($errors['tipo_recurso']) ? 'border-red-500' : '' ?>">
                                     <option value="">Seleccione...</option>
                                     <option value="Libro" <?= $formData['tipo_recurso'] === 'Libro' ? 'selected' : '' ?>>Libro</option>
-                                    <option value="Tesis" <?= $formData['tipo_recurso'] === 'Tesis' ? 'selected' : '' ?>>Tesis</option>
+                                    <option value="Tesis/Proyecto" <?= $formData['tipo_recurso'] === 'Tesis/Proyecto' ? 'selected' : '' ?>>Tesis/Proyecto</option>
                                     <option value="Revista" <?= $formData['tipo_recurso'] === 'Revista' ? 'selected' : '' ?>>Revista</option>
-                                    <option value="Artículo" <?= $formData['tipo_recurso'] === 'Artículo' ? 'selected' : '' ?>>Artículo</option>
+                                    <option value="Equipo de Cómputo" <?= $formData['tipo_recurso'] === 'Equipo de Cómputo' ? 'selected' : '' ?>>Equipo de Cómputo</option>
                                     <option value="Otro" <?= $formData['tipo_recurso'] === 'Otro' ? 'selected' : '' ?>>Otro</option>
                                 </select>
                                 <?php if (!empty($errors['tipo_recurso'])): ?>

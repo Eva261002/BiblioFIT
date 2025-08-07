@@ -133,16 +133,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                        value="<?= htmlspecialchars($recurso['pais']) ?>" 
                                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                             </div>
-                            
+                                
                             <div>
                                 <label for="tipo_recurso" class="block text-sm font-medium text-gray-700">Tipo de Recurso *</label>
                                 <select id="tipo_recurso" name="tipo_recurso" required
                                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                     <option value="">Seleccione...</option>
                                     <option value="Libro" <?= $recurso['tipo_recurso'] === 'Libro' ? 'selected' : '' ?>>Libro</option>
-                                    <option value="Tesis" <?= $recurso['tipo_recurso'] === 'Tesis' ? 'selected' : '' ?>>Tesis</option>
+                                    <option value="Tesis/Proyecto" <?= $recurso['tipo_recurso'] === 'Tesis/Proyecto' ? 'selected' : '' ?>>Tesis/Proyecto</option>
                                     <option value="Revista" <?= $recurso['tipo_recurso'] === 'Revista' ? 'selected' : '' ?>>Revista</option>
-                                    <option value="Artículo" <?= $recurso['tipo_recurso'] === 'Artículo' ? 'selected' : '' ?>>Artículo</option>
+                                    <option value="Equipo de Cómputo" <?= $recurso['tipo_recurso'] === 'Equipo de Cómputo' ? 'selected' : '' ?>>Equipo de Cómputo</option>
                                     <option value="Otro" <?= $recurso['tipo_recurso'] === 'Otro' ? 'selected' : '' ?>>Otro</option>
                                 </select>
                             </div>

@@ -52,6 +52,7 @@ $result = $conn->query($sql);
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="scripts/catalogo_libros.js"></script>
 </head>
 <body class="bg-gray-50">
     <div class="container mx-auto px-4 py-8">
@@ -70,6 +71,7 @@ $result = $conn->query($sql);
                     </button>
                 </div>
             </form>
+           
             
             <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                 <a href="registro_recursos.php" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition flex items-center gap-2">
@@ -186,10 +188,10 @@ $result = $conn->query($sql);
                                 <td class="py-3 px-4">
                                     <div class="flex justify-center space-x-3">
                                         <?php if($row['estado'] == 'disponible'): ?>
-                                            <a href="#" onclick="confirmarPrestamo(<?= intval($row['id_libro']) ?>)" 
-                                               class="text-amber-600 hover:text-amber-800 transition-colors"
-                                               title="Prestar">
-                                                <i class="fas fa-hand-holding"></i>
+                                            <a href="#" onclick="return confirmarPrestamo(<?= intval($row['id_libro']) ?>, '<?= addslashes($row['titulo']) ?>')" 
+                                            class="text-blue-600 hover:text-blue-800 transition-colors"
+                                            title="Solicitar préstamo">
+                                                <i class="fas fa-book-reader"></i>
                                             </a>
                                         <?php else: ?>
                                             <span class="text-gray-400 cursor-not-allowed" title="No disponible">
@@ -197,16 +199,16 @@ $result = $conn->query($sql);
                                             </span>
                                         <?php endif; ?>
                                         
-                                        <a href="editar_recurso.php?id=<?= intval($row['id_libro']) ?>" 
-                                           class="text-blue-600 hover:text-blue-800 transition-colors"
-                                           title="Editar">
+                                        <a href="#" 
+                                        onclick="return confirmarEdicion(<?= intval($row['id_libro']) ?>, '<?= addslashes($row['titulo']) ?>')" 
+                                        class="text-green-600 hover:text-green-800 transition-colors"
+                                        title="Editar">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         
-                                        <a href="eliminar_recurso.php?id=<?= intval($row['id_libro']) ?>" 
-                                           
-                                           class="text-red-600 hover:text-red-800 transition-colors"
-                                           title="Eliminar">
+                                        <a href="#" onclick="return confirmarEliminacion(<?= intval($row['id_libro']) ?>, '<?= addslashes($row['titulo']) ?>')" 
+                                        class="text-red-600 hover:text-red-800 transition-colors"
+                                        title="Eliminar">
                                             <i class="fas fa-trash-alt"></i>
                                         </a>
                                     </div>
@@ -274,64 +276,114 @@ $result = $conn->query($sql);
     <?php endif; ?>
 
     <script>
-        // Función para confirmar préstamo
-        function confirmarPrestamo(id_libro) {
-            if (confirm('¿Estás seguro de que deseas prestar este libro?')) {
-                window.location.href = 'prestamo_libros.php?id_libro=' + id_libro;
+    function showModal(title, message, actionUrl) {
+                document.getElementById('modalTitle').textContent = title;
+                document.getElementById('modalMessage').textContent = message;
+                const confirmBtn = document.getElementById('confirmAction');
+                
+                // Actualizar la acción del botón
+                confirmBtn.onclick = function() {
+                    window.location.href = actionUrl;
+                };
+                
+                // Mostrar modal
+                document.getElementById('confirmationModal').classList.remove('hidden');
             }
-        }
 
-        // Función para confirmar eliminación
-        function confirmarEliminacion(id) {
-            if (confirm('¿Estás seguro de que deseas eliminar este recurso?')) {
-                window.location.href = 'eliminar_recurso.php?id=' + id;
+            function closeModal() {
+                document.getElementById('confirmationModal').classList.add('hidden');
             }
-        }
 
-        // Función para ordenar la tabla
-        function sortTable(column) {
-            const url = new URL(window.location.href);
-            const currentOrder = url.searchParams.get('orden');
-            const currentDirection = url.searchParams.get('direccion');
-            
-            // Si ya estamos ordenando por esta columna, invertimos la dirección
-            if (currentOrder === column) {
-                url.searchParams.set('direccion', currentDirection === 'ASC' ? 'DESC' : 'ASC');
-            } else {
-                // Si es una nueva columna, ordenamos ASC por defecto
-                url.searchParams.set('orden', column);
-                url.searchParams.set('direccion', 'ASC');
+            // Funciones actualizadas para préstamo y eliminación
+            function confirmarPrestamo(id_libro, titulo) {
+                showModal(
+                    'Confirmar Préstamo',
+                    `¿Deseas solicitar el préstamo del libro "${titulo}"?`,
+                    `prestamo_libros.php?id_libro=${id_libro}`
+                );
+                return false;
             }
-            
-            // Mantener el parámetro de búsqueda si existe
-            if (window.location.search.includes('search=')) {
-                url.searchParams.set('search', new URLSearchParams(window.location.search).get('search'));
+            // Función para confirmar edición
+            function confirmarEdicion(id, titulo) {
+                showModal(
+                    'Editar Recurso',
+                    `¿Deseas editar el recurso "${titulo}"?`,
+                    `editar_recurso.php?id=${id}`
+                );
+                return false;
             }
-            
-            window.location.href = url.toString();
-        }
+            function confirmarEliminacion(id, titulo) {
+                showModal(
+                    'Confirmar Eliminación',
+                    `¿Deseas eliminar permanentemente el recurso "${titulo}"?\n\nEsta acción también borrará todos sus ejemplares asociados.`,
+                    `eliminar_recurso.php?id=${id}`
+                );
+                return false;
+            }
 
-        // Tooltips con comportamiento hover (como en tu versión original)
-        document.addEventListener('DOMContentLoaded', function () {
-            const infoIcons = document.querySelectorAll('.info-icon');
+            // Función para ordenar la tabla
+            function sortTable(column) {
+                const url = new URL(window.location.href);
+                const currentOrder = url.searchParams.get('orden');
+                const currentDirection = url.searchParams.get('direccion');
+                
+                // Si ya estamos ordenando por esta columna, invertimos la dirección
+                if (currentOrder === column) {
+                    url.searchParams.set('direccion', currentDirection === 'ASC' ? 'DESC' : 'ASC');
+                } else {
+                    // Si es una nueva columna, ordenamos ASC por defecto
+                    url.searchParams.set('orden', column);
+                    url.searchParams.set('direccion', 'ASC');
+                }
+                
+                // Mantener el parámetro de búsqueda si existe
+                if (window.location.search.includes('search=')) {
+                    url.searchParams.set('search', new URLSearchParams(window.location.search).get('search'));
+                }
+                
+                window.location.href = url.toString();
+            }
 
-            infoIcons.forEach(icon => {
-                icon.addEventListener('mouseenter', function () {
-                    const tooltip = this.nextElementSibling;
-                    tooltip.classList.remove('hidden');
-                    tooltip.classList.add('block');
-                });
+            // Tooltips con comportamiento hover (como en tu versión original)
+            document.addEventListener('DOMContentLoaded', function () {
+                const infoIcons = document.querySelectorAll('.info-icon');
 
-                icon.addEventListener('mouseleave', function () {
-                    const tooltip = this.nextElementSibling;
-                    tooltip.classList.remove('block');
-                    tooltip.classList.add('hidden');
+                infoIcons.forEach(icon => {
+                    icon.addEventListener('mouseenter', function () {
+                        const tooltip = this.nextElementSibling;
+                        tooltip.classList.remove('hidden');
+                        tooltip.classList.add('block');
+                    });
+
+                    icon.addEventListener('mouseleave', function () {
+                        const tooltip = this.nextElementSibling;
+                        tooltip.classList.remove('block');
+                        tooltip.classList.add('hidden');
+                    });
                 });
             });
-        });
+
     </script>
-
-
+    <!-- Modal de Confirmación -->
+    <div id="confirmationModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-xl font-bold text-gray-800"></h3>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p id="modalMessage" class="mb-6 text-gray-700"></p>
+            <div class="flex justify-end space-x-4">
+                <button onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Cancelar
+                </button>
+                <button id="confirmAction" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
     <?php include('includes/footer.php'); ?>
 </body>
 </html>
