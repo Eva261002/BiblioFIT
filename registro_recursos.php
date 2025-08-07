@@ -1,7 +1,8 @@
 <?php
-require_once 'includes/config.php'; 
- 
-// Obtener el nombre del archivo actual
+require_once 'includes/config.php';
+
+
+// Verificar acceso al módulo
 $current_module = basename($_SERVER['PHP_SELF']);
 verifyModuleAccess($current_module);
 
@@ -19,7 +20,7 @@ $formData = [
 ];
 $errors = [];
 
-if (isset($_POST['registrar'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Sanitizar y validar datos
     $formData = [
         'tipo_recurso' => trim($_POST['tipo_recurso'] ?? ''),
@@ -57,7 +58,7 @@ if (isset($_POST['registrar'])) {
         try {
             $conn->begin_transaction();
             
-            // Insertar el recurso usando consultas preparadas
+            // Insertar el recurso
             $stmt = $conn->prepare("INSERT INTO libros 
                 (titulo, autor, año_edicion, pais, tipo_recurso, descripcion) 
                 VALUES (?, ?, ?, ?, ?, ?)");
@@ -103,133 +104,139 @@ if (isset($_POST['registrar'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Recursos</title>
+    <title>Registrar Nuevo Recurso - Biblioteca</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body class="bg-gray-100">
-    <div class="container mx-auto py-8 px-4">
-        <div class="max-w-2xl mx-auto">
-            <div class="bg-white p-6 rounded-lg shadow-md">
-                <h1 class="text-2xl font-bold text-center mb-6 text-purple-700">
-                    <i class="fas fa-book-medical mr-2"></i>Registro de Nuevos Recursos
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold text-gray-800">
+                    <i class="fas fa-book-medical mr-2"></i> Registrar Nuevo Recurso
                 </h1>
-                
-                <?php if (!empty($errors['general'])): ?>
-                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4" role="alert">
-                        <p><?= htmlspecialchars($errors['general']) ?></p>
-                    </div>
-                <?php endif; ?>
-                
-                <form action="registro_recursos.php" method="POST" class="space-y-4">
-                    <!-- Tipo de Recurso -->
-                    <div>
-                        <label for="tipo_recurso" class="block text-sm font-medium text-gray-700 mb-1">
-                            Tipo de Recurso <span class="text-red-500">*</span>
-                        </label>
-                        <select name="tipo_recurso" id="tipo_recurso" required
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 <?= !empty($errors['tipo_recurso']) ? 'border-red-500' : '' ?>">
-                            <option value="">Seleccione un tipo</option>
-                            <option value="Libro" <?= $formData['tipo_recurso'] === 'Libro' ? 'selected' : '' ?>>Libro</option>
-                            <option value="Tesis/Proyecto" <?= $formData['tipo_recurso'] === 'Tesis/Proyecto' ? 'selected' : '' ?>>Tesis/Proyecto</option>
-                            <option value="Revista" <?= $formData['tipo_recurso'] === 'Revista' ? 'selected' : '' ?>>Revista</option>
-                            <option value="Equipo" <?= $formData['tipo_recurso'] === 'Equipo' ? 'selected' : '' ?>>Equipo</option>
-                        </select>
-                        <?php if (!empty($errors['tipo_recurso'])): ?>
-                            <p class="mt-1 text-sm text-red-600"><?= htmlspecialchars($errors['tipo_recurso']) ?></p>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <!-- Título -->
-                    <div>
-                        <label for="titulo" class="block text-sm font-medium text-gray-700 mb-1">
-                            Título <span class="text-red-500">*</span>
-                        </label>
-                        <input type="text" name="titulo" id="titulo" required 
-                            value="<?= htmlspecialchars($formData['titulo']) ?>"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 <?= !empty($errors['titulo']) ? 'border-red-500' : '' ?>">
-                        <?php if (!empty($errors['titulo'])): ?>
-                            <p class="mt-1 text-sm text-red-600"><?= htmlspecialchars($errors['titulo']) ?></p>
-                        <?php endif; ?>
-                    </div>
-                    
-                    <!-- Autor y Año -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="autor" class="block text-sm font-medium text-gray-700 mb-1">Autor</label>
-                            <input type="text" name="autor" id="autor" 
-                                value="<?= htmlspecialchars($formData['autor']) ?>"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                <a href="catalogo_libros.php" class="text-blue-600 hover:text-blue-800 flex items-center">
+                    <i class="fas fa-arrow-left mr-1"></i> Volver al catálogo
+                </a>
+            </div>
+
+            <?php if (!empty($errors['general'])): ?>
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                    <?= htmlspecialchars($errors['general']) ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <form action="registro_recursos.php" method="POST">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Información del Libro -->
+                        <div class="space-y-4">
+                            <h2 class="text-lg font-semibold border-b pb-2">
+                                <i class="fas fa-book-open mr-2"></i> Información del Recurso
+                            </h2>
+                            
+                            <div>
+                                <label for="tipo_recurso" class="block text-sm font-medium text-gray-700">Tipo de Recurso *</label>
+                                <select id="tipo_recurso" name="tipo_recurso" required
+                                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 <?= !empty($errors['tipo_recurso']) ? 'border-red-500' : '' ?>">
+                                    <option value="">Seleccione...</option>
+                                    <option value="Libro" <?= $formData['tipo_recurso'] === 'Libro' ? 'selected' : '' ?>>Libro</option>
+                                    <option value="Tesis" <?= $formData['tipo_recurso'] === 'Tesis' ? 'selected' : '' ?>>Tesis</option>
+                                    <option value="Revista" <?= $formData['tipo_recurso'] === 'Revista' ? 'selected' : '' ?>>Revista</option>
+                                    <option value="Artículo" <?= $formData['tipo_recurso'] === 'Artículo' ? 'selected' : '' ?>>Artículo</option>
+                                    <option value="Otro" <?= $formData['tipo_recurso'] === 'Otro' ? 'selected' : '' ?>>Otro</option>
+                                </select>
+                                <?php if (!empty($errors['tipo_recurso'])): ?>
+                                    <p class="mt-1 text-sm text-red-600"><?= htmlspecialchars($errors['tipo_recurso']) ?></p>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div>
+                                <label for="titulo" class="block text-sm font-medium text-gray-700">Título *</label>
+                                <input type="text" id="titulo" name="titulo" required
+                                       value="<?= htmlspecialchars($formData['titulo']) ?>" 
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 <?= !empty($errors['titulo']) ? 'border-red-500' : '' ?>">
+                                <?php if (!empty($errors['titulo'])): ?>
+                                    <p class="mt-1 text-sm text-red-600"><?= htmlspecialchars($errors['titulo']) ?></p>
+                                <?php endif; ?>
+                            </div>
+                            
+                            <div>
+                                <label for="autor" class="block text-sm font-medium text-gray-700">Autor</label>
+                                <input type="text" id="autor" name="autor"
+                                       value="<?= htmlspecialchars($formData['autor']) ?>" 
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="año_edicion" class="block text-sm font-medium text-gray-700">Año de Edición</label>
+                                    <input type="number" id="año_edicion" name="año_edicion" min="1900" max="<?= date('Y') + 1 ?>"
+                                           value="<?= $formData['año_edicion'] ? htmlspecialchars($formData['año_edicion']) : '' ?>" 
+                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label for="pais" class="block text-sm font-medium text-gray-700">País</label>
+                                    <input type="text" id="pais" name="pais"
+                                           value="<?= htmlspecialchars($formData['pais']) ?>" 
+                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label for="descripcion" class="block text-sm font-medium text-gray-700">Descripción</label>
+                                <textarea id="descripcion" name="descripcion" rows="3"
+                                          class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500"><?= htmlspecialchars($formData['descripcion']) ?></textarea>
+                            </div>
                         </div>
-                        <div>
-                            <label for="año_edicion" class="block text-sm font-medium text-gray-700 mb-1">Año de Edición</label>
-                            <input type="number" name="año_edicion" id="año_edicion" min="1900" max="<?= date('Y') + 1 ?>"
-                                value="<?= $formData['año_edicion'] ? htmlspecialchars($formData['año_edicion']) : '' ?>"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
+                        
+                        <!-- Información del Ejemplar -->
+                        <div class="space-y-4">
+                            <h2 class="text-lg font-semibold border-b pb-2">
+                                <i class="fas fa-barcode mr-2"></i> Información del Ejemplar
+                            </h2>
+                            
+                            <div>
+                                <label for="n_inventario" class="block text-sm font-medium text-gray-700">Número de Inventario Base *</label>
+                                <input type="text" id="n_inventario" name="n_inventario" required
+                                       value="<?= htmlspecialchars($formData['n_inventario']) ?>" 
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 <?= !empty($errors['n_inventario']) ? 'border-red-500' : '' ?>">
+                                <?php if (!empty($errors['n_inventario'])): ?>
+                                    <p class="mt-1 text-sm text-red-600"><?= htmlspecialchars($errors['n_inventario']) ?></p>
+                                <?php endif; ?>
+                                <p class="mt-1 text-xs text-gray-500">Ejemplo: LIB-2023-001 (se agregará -1, -2, etc. para cada ejemplar)</p>
+                            </div>
+                            
+                            <div>
+                                <label for="sig_topog" class="block text-sm font-medium text-gray-700">Signatura Topográfica</label>
+                                <input type="text" id="sig_topog" name="sig_topog"
+                                       value="<?= htmlspecialchars($formData['sig_topog']) ?>" 
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            
+                            <div>
+                                <label for="ejemplar" class="block text-sm font-medium text-gray-700">Número de Ejemplares *</label>
+                                <input type="number" id="ejemplar" name="ejemplar" min="1" max="100" required
+                                       value="<?= $formData['ejemplar'] ? htmlspecialchars($formData['ejemplar']) : 1 ?>" 
+                                       class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 <?= !empty($errors['ejemplar']) ? 'border-red-500' : '' ?>">
+                                <?php if (!empty($errors['ejemplar'])): ?>
+                                    <p class="mt-1 text-sm text-red-600"><?= htmlspecialchars($errors['ejemplar']) ?></p>
+                                <?php endif; ?>
+                                <p class="mt-1 text-xs text-gray-500">Se crearán múltiples ejemplares con el mismo número base</p>
+                            </div>
+                            
+                            <div class="pt-6">
+                                <button type="submit" name="registrar" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                    <i class="fas fa-save mr-2"></i> Registrar Recurso
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <!-- País y Descripción -->
-                    <div>
-                        <label for="pais" class="block text-sm font-medium text-gray-700 mb-1">País</label>
-                        <input type="text" name="pais" id="pais" 
-                            value="<?= htmlspecialchars($formData['pais']) ?>"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                    </div>
-                    
-                    <div>
-                        <label for="descripcion" class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                        <textarea name="descripcion" id="descripcion" rows="3"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"><?= htmlspecialchars($formData['descripcion']) ?></textarea>
-                    </div>
-                    
-                    <!-- Número de Inventario y Signatura -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="n_inventario" class="block text-sm font-medium text-gray-700 mb-1">
-                                Nº de Inventario Base <span class="text-red-500">*</span>
-                            </label>
-                            <input type="text" name="n_inventario" id="n_inventario" required
-                                value="<?= htmlspecialchars($formData['n_inventario']) ?>"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 <?= !empty($errors['n_inventario']) ? 'border-red-500' : '' ?>">
-                            <?php if (!empty($errors['n_inventario'])): ?>
-                                <p class="mt-1 text-sm text-red-600"><?= htmlspecialchars($errors['n_inventario']) ?></p>
-                            <?php endif; ?>
-                        </div>
-                        <div>
-                            <label for="sig_topog" class="block text-sm font-medium text-gray-700 mb-1">Signatura Topográfica</label>
-                            <input type="text" name="sig_topog" id="sig_topog"
-                                value="<?= htmlspecialchars($formData['sig_topog']) ?>"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500">
-                        </div>
-                    </div>
-                    
-                    <!-- Número de Ejemplares -->
-                    <div>
-                        <label for="ejemplar" class="block text-sm font-medium text-gray-700 mb-1">
-                            Número de Ejemplares <span class="text-red-500">*</span>
-                        </label>
-                        <input type="number" name="ejemplar" id="ejemplar" min="1" max="100" required
-                            value="<?= $formData['ejemplar'] ? htmlspecialchars($formData['ejemplar']) : 1 ?>"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 <?= !empty($errors['ejemplar']) ? 'border-red-500' : '' ?>">
-                        <?php if (!empty($errors['ejemplar'])): ?>
-                            <p class="mt-1 text-sm text-red-600"><?= htmlspecialchars($errors['ejemplar']) ?></p>
-                        <?php endif; ?>
-                        <p class="mt-1 text-sm text-gray-500">Se generarán números de inventario consecutivos (ej. INV-001-1, INV-001-2, etc.)</p>
-                    </div>
-                    
-                    <!-- Botón de envío -->
-                    <div class="pt-4">
-                        <button type="submit" name="registrar" 
-                            class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 flex items-center justify-center">
-                            <i class="fas fa-save mr-2"></i> Registrar Recurso
-                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    
+
     <script>
         // Validación básica del lado del cliente
         document.querySelector('form').addEventListener('submit', function(e) {

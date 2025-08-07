@@ -1,28 +1,48 @@
 <?php
 require_once 'includes/config.php';
- // Obtener el nombre del archivo actual
 $current_module = basename($_SERVER['PHP_SELF']);
-
-// Verificar acceso al módulo
 verifyModuleAccess($current_module);
 
+// Parámetros de paginación
+$registrosPorPagina = 10; // Número de registros por página
+$paginaActual = isset($_GET['pagina']) ? max(1, intval($_GET['pagina'])) : 1;
+$offset = ($paginaActual - 1) * $registrosPorPagina;
+
+// Parámetros de ordenación
+$orden = isset($_GET['orden']) ? $_GET['orden'] : '';
+$direccion = isset($_GET['dir']) && in_array(strtoupper($_GET['dir']), ['ASC', 'DESC']) 
+            ? strtoupper($_GET['dir']) 
+            : 'ASC';
 
 // Filtro de búsqueda
-$search_query = '';
-if (isset($_GET['search'])) {
-    $search_query = $conn->real_escape_string($_GET['search']);
+$search_query = isset($_GET['search']) ? $conn->real_escape_string($_GET['search']) : '';
+
+// Consulta para el total de registros
+$sqlTotal = "SELECT COUNT(*) as total 
+             FROM libros
+             JOIN ejemplares ON libros.id_libro = ejemplares.id_libro
+             WHERE (libros.titulo LIKE '%$search_query%' OR libros.autor LIKE '%$search_query%' OR libros.tipo_recurso LIKE '%$search_query%')";
+
+$resultTotal = $conn->query($sqlTotal);
+$totalRegistros = $resultTotal->fetch_assoc()['total'];
+$totalPaginas = ceil($totalRegistros / $registrosPorPagina);
+
+// Consulta principal con paginación y ordenación
+$sql = "SELECT libros.id_libro, libros.titulo, libros.autor, libros.año_edicion, libros.pais, libros.tipo_recurso, 
+               ejemplares.id_ejemplar, ejemplares.n_inventario, ejemplares.sig_topog, ejemplares.estado
+        FROM libros
+        JOIN ejemplares ON libros.id_libro = ejemplares.id_libro
+        WHERE (libros.titulo LIKE '%$search_query%' OR libros.autor LIKE '%$search_query%' OR libros.tipo_recurso LIKE '%$search_query%')";
+
+if ($orden && in_array($orden, ['titulo', 'autor', 'n_inventario', 'tipo_recurso', 'estado'])) {
+    $sql .= " ORDER BY $orden $direccion";
 }
- 
-// Consulta para obtener los recursos (libros, tesis, revistas, etc.)
-$sql = "
-    SELECT libros.id_libro, libros.titulo, libros.autor, libros.año_edicion, libros.pais, libros.tipo_recurso, 
-           ejemplares.id_ejemplar, ejemplares.n_inventario, ejemplares.sig_topog, ejemplares.estado
-    FROM libros
-    JOIN ejemplares ON libros.id_libro = ejemplares.id_libro
-    WHERE (libros.titulo LIKE '%$search_query%' OR libros.autor LIKE '%$search_query%' OR libros.tipo_recurso LIKE '%$search_query%')
-";
+
+$sql .= " LIMIT $offset, $registrosPorPagina";
+
 $result = $conn->query($sql);
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -30,109 +50,279 @@ $result = $conn->query($sql);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Catálogo de Recursos</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script src="scripts/catalogo_libros.js"></script>
 </head>
-<body class="bg-gray-100">
-
-
-
-    <div class="container mx-auto py-12">
-        <h1 class="text-3xl font-bold text-center mb-6">Catálogo de Recursos</h1>
-
-        <!-- Filtro de Búsqueda -->
-        <form action="catalogo_libros.php" method="GET" class="mb-6">
-            <input type="text" name="search" placeholder="Buscar por título, autor o categoría" value="<?php echo htmlspecialchars($search_query); ?>" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm w-full sm:w-1/3">
-            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 ml-2">Buscar</button>
-        </form>
-
-        <!-- Botones de acción -->
-        <div class="flex justify-end mb-6">
-            <a href="registro_recursos.php" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 mr-4">Agregar Recurso</a>
-            <a href="prestamo_libros.php" class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600">Ver Recursos Prestados</a>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Barra de búsqueda y botones -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <form action="catalogo_libros.php" method="GET" class="w-full md:w-1/2">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" name="search" placeholder="Buscar por título, autor o categoría..." 
+                           value="<?= htmlspecialchars($search_query) ?>" 
+                           class="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <button type="submit" class="absolute right-0 top-0 h-full px-4 text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+            
+            <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <a href="registro_recursos.php" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Agregar
+                </a>
+                <a href="prestamo_libros.php" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition flex items-center gap-2">
+                    <i class="fas fa-book-open"></i> Préstamos
+                </a>
+            </div>
         </div>
 
         <!-- Tabla de Catálogo -->
-        <div class="overflow-x-auto bg-white rounded-lg shadow">
-            <div class="max-h-96 overflow-y-auto">
-                <table class="min-w-full bg-white">
-                    <thead class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-                        <tr>
-                            <th class="py-3 px-6 text-left">Título</th>
-                            <th class="py-3 px-6 text-left">Autor</th>
-                            <th class="py-3 px-6 text-left">Ejemplar (Inventario)</th>
-                            <th class="py-3 px-6 text-left">Categoría</th>
-                            <th class="py-3 px-6 text-left">Estado</th>
-                            <th class="py-3 px-6 text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-gray-600 text-sm font-light">
-                        <?php if ($result->num_rows > 0): ?>
-                            <?php while($row = $result->fetch_assoc()): ?>
-                                <tr class="border-b border-gray-200 hover:bg-gray-100" id="libro-<?php echo intval($row['id_libro']); ?>">
-                                    <td class="py-3 px-6 text-left relative">
-                                        <?php echo htmlspecialchars($row['titulo']); ?>
-                                        <span class="info-icon cursor-pointer text-blue-500 hover:text-blue-700">ℹ️</span>
-                                        <!-- Tooltip -->
-                                        <div class="info-details absolute hidden bg-white border border-gray-200 shadow-lg rounded-lg p-4 z-50">
-                                            <p><strong>Nº Inventario:</strong> <?php echo htmlspecialchars($row['n_inventario']); ?></p>
-                                            <p><strong>Signatura Topográfica:</strong> <?php echo htmlspecialchars($row['sig_topog']); ?></p>
-                                            <p><strong>Año de Edición:</strong> <?php echo htmlspecialchars($row['año_edicion']); ?></p>
-                                            <p><strong>País:</strong> <?php echo htmlspecialchars($row['pais']); ?></p>
+        <div class="table-container rounded-lg border border-gray-200 shadow-sm">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-blue-600 text-white">
+                    <tr>
+                        <th class="py-3 px-4 text-left sortable" onclick="sortTable('titulo')">
+                            Título
+                            <?php if ($orden === 'titulo'): ?>
+                                <span class="sort-arrow"><?= $direccion === 'ASC' ? '↑' : '↓' ?></span>
+                            <?php endif; ?>
+                        </th>
+                        <th class="py-3 px-4 text-left sortable" onclick="sortTable('autor')">
+                            Autor
+                            <?php if ($orden === 'autor'): ?>
+                                <span class="sort-arrow"><?= $direccion === 'ASC' ? '↑' : '↓' ?></span>
+                            <?php endif; ?>
+                        </th>
+                        <th class="py-3 px-4 text-left sortable" onclick="sortTable('n_inventario')">
+                            Inventario
+                            <?php if ($orden === 'n_inventario'): ?>
+                                <span class="sort-arrow"><?= $direccion === 'ASC' ? '↑' : '↓' ?></span>
+                            <?php endif; ?>
+                        </th>
+                        <th class="py-3 px-4 text-left sortable" onclick="sortTable('tipo_recurso')">
+                            Categoría
+                            <?php if ($orden === 'tipo_recurso'): ?>
+                                <span class="sort-arrow"><?= $direccion === 'ASC' ? '↑' : '↓' ?></span>
+                            <?php endif; ?>
+                        </th>
+                        <th class="py-3 px-4 text-left sortable" onclick="sortTable('estado')">
+                            Estado
+                            <?php if ($orden === 'estado'): ?>
+                                <span class="sort-arrow"><?= $direccion === 'ASC' ? '↑' : '↓' ?></span>
+                            <?php endif; ?>
+                        </th>
+                        <th class="py-3 px-4 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <?php if ($result->num_rows > 0): ?>
+                        <?php while($row = $result->fetch_assoc()): ?>
+                            <tr class="hover:bg-gray-50 transition-colors" id="libro-<?= intval($row['id_libro']) ?>">
+                                <td class="py-3 px-4 relative">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 text-blue-600">
+                                            <i class="fas fa-book text-sm"></i>
                                         </div>
-                                    </td>
-                                    <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['autor']); ?></td>
-                                    <td class="py-3 px-6 text-left">
-                                        <?php echo htmlspecialchars($row['n_inventario']); ?>
-                                    </td>
-                                    <td class="py-3 px-6 text-left"><?php echo htmlspecialchars($row['tipo_recurso']); ?></td>
-                                    <td class="py-3 px-6 text-left" id="estado-<?php echo intval($row['id_ejemplar']); ?>">
+                                        <div>
+                                            <div><?= htmlspecialchars($row['titulo']) ?></div>
+                                            <span class="info-icon cursor-pointer text-blue-500 hover:text-blue-700 text-xs flex items-center mt-1">
+                                                <i class="fas fa-info-circle mr-1"></i> Detalles
+                                            </span>
+                                            <!-- Tooltip -->
+                                            <div class="info-details absolute hidden z-50 w-64 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 left-4">
+                                                <div class="space-y-2 text-sm">
+                                                    <div>
+                                                        <span class="font-semibold text-gray-700">Nº Inventario:</span>
+                                                        <span class="text-gray-600"><?= htmlspecialchars($row['n_inventario']) ?></span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="font-semibold text-gray-700">Signatura:</span>
+                                                        <span class="text-gray-600"><?= htmlspecialchars($row['sig_topog']) ?></span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="font-semibold text-gray-700">Año:</span>
+                                                        <span class="text-gray-600"><?= htmlspecialchars($row['año_edicion']) ?></span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="font-semibold text-gray-700">País:</span>
+                                                        <span class="text-gray-600"><?= htmlspecialchars($row['pais']) ?></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4"><?= htmlspecialchars($row['autor']) ?></td>
+                                <td class="py-3 px-4 font-mono text-sm"><?= htmlspecialchars($row['n_inventario']) ?></td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                                        <?= htmlspecialchars($row['tipo_recurso']) ?>
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4" id="estado-<?= intval($row['id_ejemplar']) ?>">
+                                    <?php if($row['estado'] == 'disponible'): ?>
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 flex items-center w-fit">
+                                            <i class="fas fa-check-circle mr-1"></i> Disponible
+                                        </span>
+                                    <?php elseif($row['estado'] == 'prestado'): ?>
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 flex items-center w-fit">
+                                            <i class="fas fa-exclamation-circle mr-1"></i> Prestado
+                                        </span>
+                                    <?php elseif($row['estado'] == 'dañado'): ?>
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 flex items-center w-fit">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i> Dañado
+                                        </span>
+                                    <?php elseif($row['estado'] == 'perdido'): ?>
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 flex items-center w-fit">
+                                            <i class="fas fa-times-circle mr-1"></i> Perdido
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="flex justify-center space-x-3">
                                         <?php if($row['estado'] == 'disponible'): ?>
-                                            <span class="bg-green-200 text-green-600 py-1 px-3 rounded-full text-xs">Disponible</span>
-                                        <?php elseif($row['estado'] == 'prestado'): ?>
-                                            <span class="bg-red-200 text-red-600 py-1 px-3 rounded-full text-xs">Prestado</span>
-                                        <?php elseif($row['estado'] == 'dañado'): ?>
-                                            <span class="bg-yellow-200 text-yellow-600 py-1 px-3 rounded-full text-xs">Dañado</span>
-                                        <?php elseif($row['estado'] == 'perdido'): ?>
-                                            <span class="bg-gray-200 text-gray-600 py-1 px-3 rounded-full text-xs">Perdido</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="py-3 px-6 text-center">
-                                        <?php if($row['estado'] == 'disponible'): ?>
-                                            <a href="prestamo_libros.php?id_libro=<?php echo intval($row['id_libro']); ?>&id_ejemplar=<?php echo intval($row['id_ejemplar']); ?>" class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2 text-sm">Prestar</a>
+                                            <a href="#" onclick="confirmarPrestamo(<?= intval($row['id_libro']) ?>)" 
+                                               class="text-amber-600 hover:text-amber-800 transition-colors"
+                                               title="Prestar">
+                                                <i class="fas fa-hand-holding"></i>
+                                            </a>
                                         <?php else: ?>
-                                            <span class="text-gray-500">No disponible</span>
+                                            <span class="text-gray-400 cursor-not-allowed" title="No disponible">
+                                                <i class="fas fa-hand-holding"></i>
+                                            </span>
                                         <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" class="py-3 px-6 text-center">No se encontraron recursos.</td>
+                                        
+                                        <a href="editar_recurso.php?id=<?= intval($row['id_libro']) ?>" 
+                                           class="text-blue-600 hover:text-blue-800 transition-colors"
+                                           title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        
+                                        <a href="eliminar_recurso.php?id=<?= intval($row['id_libro']) ?>" 
+                                           
+                                           class="text-red-600 hover:text-red-800 transition-colors"
+                                           title="Eliminar">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6" class="py-4 px-4 text-center text-gray-500">
+                                <i class="fas fa-info-circle mr-2"></i> No se encontraron recursos
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </div>
 
-<?php include 'includes/footer.php'; ?>
+    <!-- Paginación -->
+    <?php if ($totalPaginas > 1): ?>
+        <div class="flex flex-col sm:flex-row justify-between items-center mt-6 bg-white p-4 rounded-lg border border-gray-200">
+            <div class="text-sm text-gray-600 mb-2 sm:mb-0">
+                Mostrando <?= ($offset + 1) ?> a <?= min($offset + $registrosPorPagina, $totalRegistros) ?> de <?= $totalRegistros ?> registros
+            </div>
+            <div class="flex items-center space-x-1">
+                <?php if ($paginaActual > 1): ?>
+                    <a href="?pagina=1<?= !empty($search_query) ? '&search='.urlencode($search_query) : '' ?>&orden=<?= $orden ?>&dir=<?= $direccion ?>" 
+                    class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    title="Primera página">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                    <a href="?pagina=<?= ($paginaActual - 1) ?><?= !empty($search_query) ? '&search='.urlencode($search_query) : '' ?>&orden=<?= $orden ?>&dir=<?= $direccion ?>" 
+                    class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    title="Página anterior">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                <?php endif; ?>
+                
+                <?php 
+                // Mostrar números de página (5 en total, centrados en la actual)
+                $inicio = max(1, min($paginaActual - 2, $totalPaginas - 4));
+                $fin = min($totalPaginas, max($paginaActual + 2, 5));
+                
+                for ($i = $inicio; $i <= $fin; $i++): ?>
+                    <a href="?pagina=<?= $i ?><?= !empty($search_query) ? '&search='.urlencode($search_query) : '' ?>&orden=<?= $orden ?>&dir=<?= $direccion ?>" 
+                    class="px-3 py-1 border border-gray-300 rounded-md <?= $i == $paginaActual ? 'bg-blue-600 text-white hover:bg-blue-700' : 'hover:bg-gray-50' ?> transition-colors min-w-[2.5rem] text-center">
+                        <?= $i ?>
+                    </a>
+                <?php endfor; ?>
+                
+                <?php if ($paginaActual < $totalPaginas): ?>
+                    <a href="?pagina=<?= ($paginaActual + 1) ?><?= !empty($search_query) ? '&search='.urlencode($search_query) : '' ?>&orden=<?= $orden ?>&dir=<?= $direccion ?>" 
+                    class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    title="Página siguiente">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                    <a href="?pagina=<?= $totalPaginas ?><?= !empty($search_query) ? '&search='.urlencode($search_query) : '' ?>&orden=<?= $orden ?>&dir=<?= $direccion ?>" 
+                    class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    title="Última página">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <script>
+        // Función para confirmar préstamo
+        function confirmarPrestamo(id_libro) {
+            if (confirm('¿Estás seguro de que deseas prestar este libro?')) {
+                window.location.href = 'prestamo_libros.php?id_libro=' + id_libro;
+            }
+        }
+
+        // Función para confirmar eliminación
+        function confirmarEliminacion(id) {
+            if (confirm('¿Estás seguro de que deseas eliminar este recurso?')) {
+                window.location.href = 'eliminar_recurso.php?id=' + id;
+            }
+        }
+
+        // Función para ordenar la tabla
+        function sortTable(column) {
+            const url = new URL(window.location.href);
+            const currentOrder = url.searchParams.get('orden');
+            const currentDirection = url.searchParams.get('direccion');
+            
+            // Si ya estamos ordenando por esta columna, invertimos la dirección
+            if (currentOrder === column) {
+                url.searchParams.set('direccion', currentDirection === 'ASC' ? 'DESC' : 'ASC');
+            } else {
+                // Si es una nueva columna, ordenamos ASC por defecto
+                url.searchParams.set('orden', column);
+                url.searchParams.set('direccion', 'ASC');
+            }
+            
+            // Mantener el parámetro de búsqueda si existe
+            if (window.location.search.includes('search=')) {
+                url.searchParams.set('search', new URLSearchParams(window.location.search).get('search'));
+            }
+            
+            window.location.href = url.toString();
+        }
+
+        // Tooltips con comportamiento hover (como en tu versión original)
         document.addEventListener('DOMContentLoaded', function () {
-            // Seleccionar todos los íconos de información
             const infoIcons = document.querySelectorAll('.info-icon');
 
             infoIcons.forEach(icon => {
                 icon.addEventListener('mouseenter', function () {
-                    // Mostrar el tooltip correspondiente
                     const tooltip = this.nextElementSibling;
                     tooltip.classList.remove('hidden');
                     tooltip.classList.add('block');
                 });
 
                 icon.addEventListener('mouseleave', function () {
-                    // Ocultar el tooltip
                     const tooltip = this.nextElementSibling;
                     tooltip.classList.remove('block');
                     tooltip.classList.add('hidden');
@@ -140,5 +330,8 @@ $result = $conn->query($sql);
             });
         });
     </script>
+
+
+    <?php include('includes/footer.php'); ?>
 </body>
 </html>
