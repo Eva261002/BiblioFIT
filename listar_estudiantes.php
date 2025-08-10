@@ -199,7 +199,7 @@ if ($stmt) {
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             
-                                            <!-- Botón Eliminar -->
+                                            <!-- Botón Eliminar  -->
                                             <a href="#" 
                                                onclick="confirmarEliminacion(<?= $row['id_estudiante'] ?>)" 
                                                class="text-red-600 hover:text-red-800 transition-colors"

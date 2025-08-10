@@ -226,18 +226,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <option value="" disabled>Seleccione una carrera</option>
                             <option value="Ingeniería en Sistemas" <?= ($_POST['carrera'] ?? $student['carrera']) === 'Ingeniería en Sistemas' ? 'selected' : '' ?>>Ingeniería en Sistemas</option>
                             <option value="Ingeniería Civil" <?= ($_POST['carrera'] ?? $student['carrera']) === 'Ingeniería Civil' ? 'selected' : '' ?>>Ingeniería Civil</option>
-                            <option value="Ingeniería Mecánica y Automotriz" <?= ($_POST['carrera'] ?? $student['carrera']) === 'Ingeniería Mecánica y Automotriz' ? 'selected' : '' ?>>Ingeniería Mecánica y Automotriz</option>
-                            <option value="Otra" <?= !in_array(($_POST['carrera'] ?? $student['carrera']), ['Ingeniería en Sistemas', 'Ingeniería Civil', 'Ingeniería Mecánica y Automotriz']) ? 'selected' : '' ?>>Otra</option>
+                            <option value="Ingeniería Mecánica Automotriz" <?= ($_POST['carrera'] ?? $student['carrera']) === 'Ingeniería Mecánica Automotriz' ? 'selected' : '' ?>>Ingeniería Mecánica Automotriz</option>
+                            <option value="Otra" <?= !in_array(($_POST['carrera'] ?? $student['carrera']), ['Ingeniería en Sistemas', 'Ingeniería Civil', 'Ingeniería Mecánica Automotriz']) ? 'selected' : '' ?>>Otra</option>
                         </select>
                     </div>
 
                     <!-- Otra Carrera (se muestra solo cuando se selecciona "Otra") -->
-                    <div id="otraCarreraContainer" class="mb-6 <?= !in_array(($_POST['carrera'] ?? $student['carrera']), ['Ingeniería en Sistemas', 'Ingeniería Civil', 'Ingeniería Mecánica y Automotriz']) ? '' : 'hidden' ?>">
+                    <div id="otraCarreraContainer" class="mb-6 <?= !in_array(($_POST['carrera'] ?? $student['carrera']), ['Ingeniería en Sistemas', 'Ingeniería Civil', 'Ingeniería Mecánica Automotriz']) ? '' : 'hidden' ?>">
                         <label for="otra_carrera" class="block text-lg font-medium text-gray-700 mb-2">
                             Especificar Carrera <span class="text-red-500">*</span>
                         </label>
                         <input type="text" name="otra_carrera" id="otra_carrera" 
-                               value="<?= !in_array(($_POST['carrera'] ?? $student['carrera']), ['Ingeniería en Sistemas', 'Ingeniería Civil', 'Ingeniería Mecánica y Automotriz']) ? htmlspecialchars($_POST['carrera'] ?? $student['carrera']) : '' ?>" 
+                               value="<?= !in_array(($_POST['carrera'] ?? $student['carrera']), ['Ingeniería en Sistemas', 'Ingeniería Civil', 'Ingeniería Mecánica Automotriz']) ? htmlspecialchars($_POST['carrera'] ?? $student['carrera']) : '' ?>" 
                                class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 

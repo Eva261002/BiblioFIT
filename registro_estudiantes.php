@@ -208,7 +208,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <option value="" disabled selected>Selecciona una carrera</option>
                         <option value="Ingeniería en Sistemas" <?= $formData['carrera'] === 'Ingeniería en Sistemas' ? 'selected' : '' ?>>Ingeniería en Sistemas</option>
                         <option value="Ingeniería Civil" <?= $formData['carrera'] === 'Ingeniería Civil' ? 'selected' : '' ?>>Ingeniería Civil</option>
-                        <option value="Ingeniería Mecánica y Automotriz" <?= $formData['carrera'] === 'Ingeniería Mecánica y Automotriz' ? 'selected' : '' ?>>Ingeniería Mecánica y Automotriz</option>
+                        <option value="Ingeniería Mecánica Automotriz" <?= $formData['carrera'] === 'Ingeniería Mecánica Automotriz' ? 'selected' : '' ?>>Ingeniería Mecánica Automotriz</option>
                         <option value="Otra" <?= $formData['carrera'] === 'Otra' ? 'selected' : '' ?>>Otra (especificar)</option>
                     </select>
                     <?php if (isset($errors['carrera'])): ?>
