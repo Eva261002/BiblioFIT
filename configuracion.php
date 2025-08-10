@@ -19,9 +19,9 @@ $usuarios = $conn->query("
 $modulos = $conn->query("
     SELECT id, nombre, url, icono 
     FROM modulos 
+    WHERE nombre != 'Configuración'  
     ORDER BY nombre
 ");
-
 // Procesar todas las operaciones POST
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
@@ -155,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         <!-- Resumen de módulos -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Módulos Disponibles</h2>
+            <h2 class="text-xl font-semibold mb-4">Módulos Disponibles para Usuarios</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <?php while($modulo = $modulos->fetch_assoc()): ?>
                 <div class="border rounded-lg p-4 flex items-center hover:bg-gray-50 transition-colors">
