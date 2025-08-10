@@ -3,7 +3,7 @@ include('includes/db.php');
 
 date_default_timezone_set('America/La_Paz');
 
-// Verificar si se ha enviado el formulario
+// Verificar si se ha enviado el formulario date_default_timezone_set('Etc/GMT-4');
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'devolver') {
     $id_prestamo = intval($_POST['id_prestamo']);
     $recibido_por = isset($_POST['recibido_por']) ? $conn->real_escape_string($_POST['recibido_por']) : '';

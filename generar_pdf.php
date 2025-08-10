@@ -3,6 +3,7 @@ require('fpdf/fpdf.php');
 include('includes/db.php');
 include('includes/auth.php');
 
+date_default_timezone_set('Etc/GMT-4');
 // Verificar si se envió el formulario
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: reportes.php');
@@ -27,6 +28,7 @@ $pdf->SetFont('Arial', 'B', 16);
 function textoPDF($texto) {
     return iconv('UTF-8', 'ISO-8859-1', $texto);
 }
+
 
 // Título del reporte 
 $titulos = [
@@ -328,5 +330,7 @@ function generarReporteLibros($pdf, $conn, $fecha_inicio, $fecha_fin) {
     } else {
         $pdf->Cell(0, 10, textoPDF('No hay datos detallados de préstamos por libro'), 0, 1);
     }
+
+    
 }
 ?>
