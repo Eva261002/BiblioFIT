@@ -1,6 +1,9 @@
 <?php
 require_once 'includes/config.php';
 
+// Verificar acceso al módulo
+$current_module = basename($_SERVER['PHP_SELF']);
+verifyModuleAccess($current_module);
 
 // Verificar si se recibió un ID válido
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {

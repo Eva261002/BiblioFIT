@@ -3,7 +3,7 @@ require_once 'includes/config.php';
 
 // Verificar acceso al módulo
 verifyModuleAccess(basename($_SERVER['PHP_SELF']));
-
+verifyModuleAccess($current_module);
 // Validar ID
 if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
     $_SESSION['error_message'] = "ID de recurso no válido";
